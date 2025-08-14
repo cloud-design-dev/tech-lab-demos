@@ -17,6 +17,18 @@ data:
   FLASK_SECRET_KEY: c3VwZXItc2VjcmV0LWZsYXNrLWtleS0yMDI0
   ADMIN_PASSWORD: ZGVtby1hZG1pbi0yMDI0
 ---
+# GitHub Webhook Secret for automated builds
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-webhook-secret
+  namespace: check-in-demo
+type: Opaque
+data:
+  # Base64 encoded webhook secret - change in production
+  # Default: webhook-secret-2024 -> d2ViaG9vay1zZWNyZXQtMjAyNA==
+  WebHookSecretKey: d2ViaG9vay1zZWNyZXQtMjAyNA==
+---
 # Check-in App ConfigMap for non-sensitive configuration
 apiVersion: v1
 kind: ConfigMap
@@ -46,7 +58,7 @@ spec:
       protocol: TCP
   type: ClusterIP
 ---
-# Check-in App BuildConfig for S2I builds
+# Check-in App BuildConfig for S2I builds with GitHub webhook
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
@@ -58,7 +70,7 @@ spec:
   source:
     type: Git
     git:
-      uri: https://github.com/your-repo/tech-lab-demos.git  # TODO: Update with actual repo
+      uri: https://github.com/cloud-design-dev/tech-lab-demos.git
       ref: main
     contextDir: check-in-app
   strategy:
@@ -78,6 +90,9 @@ spec:
   triggers:
   - type: ConfigChange
   - type: ImageChange
+  - type: GitHub
+    github:
+      secret: github-webhook-secret
 ---
 # Check-in App ImageStream
 apiVersion: image.openshift.io/v1
@@ -91,9 +106,9 @@ spec:
   lookupPolicy:
     local: false
 ---
-# Check-in App DeploymentConfig
-apiVersion: apps.openshift.io/v1
-kind: DeploymentConfig
+# Check-in App Deployment (replacing deprecated DeploymentConfig)
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: checkin-app
   namespace: check-in-demo
@@ -102,23 +117,33 @@ metadata:
 spec:
   replicas: 2
   selector:
-    app: checkin-app
+    matchLabels:
+      app: checkin-app
   strategy:
-    type: Rolling
-    rollingParams:
-      updatePeriodSeconds: 1
-      intervalSeconds: 1
-      timeoutSeconds: 600
+    type: RollingUpdate
+    rollingUpdate:
       maxUnavailable: 25%
       maxSurge: 25%
   template:
     metadata:
       labels:
         app: checkin-app
+      annotations:
+        # Force pod restart when image changes (since we're not using DeploymentConfig triggers)
+        image.openshift.io/triggers: |
+          [
+            {
+              "from": {
+                "kind": "ImageStreamTag",
+                "name": "checkin-app:latest"
+              },
+              "fieldPath": "spec.template.spec.containers[0].image"
+            }
+          ]
     spec:
       containers:
       - name: checkin-app
-        image: checkin-app:latest
+        image: image-registry.openshift-image-registry.svc:5000/check-in-demo/checkin-app:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -204,16 +229,6 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
-  triggers:
-  - type: ConfigChange
-  - type: ImageChange
-    imageChangeParams:
-      automatic: true
-      containerNames:
-      - checkin-app
-      from:
-        kind: ImageStreamTag
-        name: checkin-app:latest
 ---
 # Check-in App Route for external access
 apiVersion: route.openshift.io/v1

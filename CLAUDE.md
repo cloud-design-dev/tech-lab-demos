@@ -508,6 +508,22 @@ This final implementation creates the perfect educational tool for demonstrating
 
 The check-in application is now production-ready with enterprise-grade IBM Cloud integration and scalable OpenShift deployment architecture.
 
+## 2025-08-14 - IBM Cloud Account User Listing for Lab Management
+- **Enhanced admin dashboard**: Added IBM Cloud account user listing to `/registered` endpoint for comprehensive lab setup management
+- **Registration tracking**: Shows which IBM Cloud account users have registered vs those who still need invitations
+- **Visual completion indicators**: Color-coded user lists with red highlighting for unregistered users and green for completed registrations
+- **Registration statistics**: Real-time completion rates, total users, and progress tracking with auto-refresh functionality
+- **Lab setup optimization**: Helps ensure no IBM Cloud account users are missed during lab invitation process
+- **Admin-only access**: Secure endpoint requiring admin authentication with graceful error handling and cache management
+
+## 2025-08-14 - Migration from DeploymentConfig to Standard Kubernetes Deployment
+- **Modernized deployment architecture**: Replaced deprecated DeploymentConfig with standard Kubernetes Deployment for future-proof OpenShift compatibility
+- **GitHub webhook integration**: Added automated build triggers on code pushes to main branch with secure webhook authentication
+- **Enhanced CI/CD pipeline**: Push to GitHub → Automatic S2I build → Automatic deployment rollout without manual intervention
+- **Updated deployment tooling**: Modified deployment script and documentation to use standard Kubernetes commands (deployment vs dc)
+- **Comprehensive webhook setup**: Created detailed WEBHOOK.md guide with GitHub configuration, troubleshooting, and security best practices
+- **Production-ready automation**: Webhook secret management, build monitoring, and deployment status validation for reliable automated deployments
+
 ## 2025-08-13 - Demo App V2 Enhanced Resource Metrics Implementation
 
 ### Upgraded Container Resource Monitoring (demo-app-v2/)

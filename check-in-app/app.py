@@ -465,6 +465,57 @@ def clear_user_cache():
     _cache_timestamp = None
     return jsonify({"message": "User cache cleared successfully"})
 
+@app.route('/api/ibm-cloud-users')
+def get_ibm_cloud_users():
+    """Get all IBM Cloud account users for admin view"""
+    if not is_admin_authenticated():
+        return jsonify({"error": "Authentication required"}), 401
+    
+    try:
+        active_users = get_active_ibm_cloud_users()
+        
+        # Get registered user emails for comparison
+        registered_users = User.query.all()
+        registered_emails = set(user.email for user in registered_users)
+        
+        # Categorize users
+        users_data = []
+        for user in active_users:
+            user_info = {
+                'email': user['email'],
+                'first_name': user.get('first_name', ''),
+                'last_name': user.get('last_name', ''),
+                'user_id': user.get('user_id', ''),
+                'state': user.get('state', 'ACTIVE'),
+                'is_registered': user['email'] in registered_emails
+            }
+            users_data.append(user_info)
+        
+        # Sort by registration status (unregistered first) then by email
+        users_data.sort(key=lambda x: (x['is_registered'], x['email']))
+        
+        # Calculate statistics
+        total_users = len(users_data)
+        registered_count = sum(1 for u in users_data if u['is_registered'])
+        unregistered_count = total_users - registered_count
+        
+        return jsonify({
+            "success": True,
+            "total_users": total_users,
+            "registered_count": registered_count,
+            "unregistered_count": unregistered_count,
+            "users": users_data,
+            "cache_age_seconds": int(time.time() - _cache_timestamp) if _cache_timestamp else None,
+            "ibm_sdk_available": IBM_SDK_AVAILABLE
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Error fetching IBM Cloud users: {str(e)}",
+            "ibm_sdk_available": IBM_SDK_AVAILABLE
+        }), 500
+
 if __name__ == '__main__':
     # Initialize database on startup
     ensure_database()

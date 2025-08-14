@@ -47,6 +47,33 @@
             </div>
         </div>
 
+        <div class="groups-section">
+            <h2 style="color: #0f62fe; text-transform: uppercase; margin-bottom: 2rem;">IBM Cloud Account Users</h2>
+            <div class="stats-panel">
+                <div class="stats-grid" id="ibm-stats-grid" style="display: none;">
+                    <div class="stat-item">
+                        <span class="number" id="total-ibm-users">-</span>
+                        <span class="label">Total Account Users</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="number" id="registered-ibm-users">-</span>
+                        <span class="label">Registered Users</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="number" id="unregistered-ibm-users">-</span>
+                        <span class="label">Not Registered Yet</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="number" id="ibm-completion-rate">-</span>
+                        <span class="label">Registration Rate</span>
+                    </div>
+                </div>
+            </div>
+            <div id="ibm-users-container">
+                <div class="loading">Loading IBM Cloud account users...</div>
+            </div>
+        </div>
+
         <div class="admin-link">
             <button onclick="refreshData()" class="submit-btn" style="width: auto; margin: 0 auto; display: block;">
                 Refresh Data
@@ -125,8 +152,115 @@
             }
         }
 
+        async function loadIBMCloudUsers() {
+            try {
+                const response = await fetch('/api/ibm-cloud-users');
+                const data = await response.json();
+                
+                const container = document.getElementById('ibm-users-container');
+                const statsGrid = document.getElementById('ibm-stats-grid');
+                
+                if (!data.success) {
+                    container.innerHTML = `<p style="text-align: center; color: #f44336;">${data.error}</p>`;
+                    if (!data.ibm_sdk_available) {
+                        container.innerHTML += '<p style="text-align: center; color: #ff9800; font-size: 0.9rem; margin-top: 1rem;">IBM Cloud SDK not available. Install dependencies and configure API credentials.</p>';
+                    }
+                    return;
+                }
+
+                // Update statistics
+                if (data.total_users > 0) {
+                    const completionRate = Math.round((data.registered_count / data.total_users) * 100);
+                    document.getElementById('total-ibm-users').textContent = data.total_users || 0;
+                    document.getElementById('registered-ibm-users').textContent = data.registered_count || 0;
+                    document.getElementById('unregistered-ibm-users').textContent = data.unregistered_count || 0;
+                    document.getElementById('ibm-completion-rate').textContent = completionRate + '%';
+                    statsGrid.style.display = 'grid';
+                }
+
+                if (data.total_users === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #666; font-style: italic;">No IBM Cloud users found. Check API credentials and permissions.</p>';
+                    return;
+                }
+
+                // Build user list
+                let html = '<div class="group-card">';
+                html += '<h4>Unregistered Users (Need Invitation)</h4>';
+                html += '<div class="group-members">';
+                
+                let unregisteredCount = 0;
+                data.users.forEach(user => {
+                    if (!user.is_registered) {
+                        unregisteredCount++;
+                        const displayName = user.first_name && user.last_name 
+                            ? `${user.first_name} ${user.last_name}` 
+                            : user.email.split('@')[0];
+                        html += `
+                            <div class="member-item" style="background: #fff8f8; border-left: 3px solid #f44336;">
+                                <div class="email" style="color: #f44336; font-weight: bold;">${user.email}</div>
+                                <div class="time" style="color: #666; font-size: 0.8rem;">
+                                    Name: ${displayName} | Status: ${user.state}
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                if (unregisteredCount === 0) {
+                    html += '<div style="text-align: center; color: #4caf50; font-style: italic; padding: 1rem;">🎉 All account users have registered!</div>';
+                }
+                
+                html += '</div></div>';
+
+                // Add registered users section
+                html += '<div class="group-card" style="border-color: #4caf50; background: #f8fff8;">';
+                html += '<h4>Registered Users ✓</h4>';
+                html += '<div class="group-members">';
+                
+                let registeredCount = 0;
+                data.users.forEach(user => {
+                    if (user.is_registered) {
+                        registeredCount++;
+                        const displayName = user.first_name && user.last_name 
+                            ? `${user.first_name} ${user.last_name}` 
+                            : user.email.split('@')[0];
+                        html += `
+                            <div class="member-item" style="background: #f8fff8; border-left: 3px solid #4caf50;">
+                                <div class="email" style="color: #4caf50; font-weight: bold;">${user.email}</div>
+                                <div class="time" style="color: #666; font-size: 0.8rem;">
+                                    Name: ${displayName} | Status: ${user.state}
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                if (registeredCount === 0) {
+                    html += '<div style="text-align: center; color: #666; font-style: italic; padding: 1rem;">No users registered yet</div>';
+                }
+                
+                html += '</div></div>';
+
+                // Add cache info if available
+                if (data.cache_age_seconds !== null) {
+                    const cacheMinutes = Math.floor(data.cache_age_seconds / 60);
+                    const cacheSeconds = data.cache_age_seconds % 60;
+                    html += `<div style="text-align: center; color: #888; font-size: 0.8rem; margin-top: 1rem;">
+                        Data cached ${cacheMinutes}m ${cacheSeconds}s ago (refreshes every 5 minutes)
+                    </div>`;
+                }
+                
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading IBM Cloud users:', error);
+                document.getElementById('ibm-users-container').innerHTML = 
+                    '<p style="text-align: center; color: #f44336;">Error loading IBM Cloud users. Please check your authentication and try again.</p>';
+            }
+        }
+
         async function refreshData() {
-            await Promise.all([loadStats(), loadRegisteredUsers()]);
+            await Promise.all([loadStats(), loadRegisteredUsers(), loadIBMCloudUsers()]);
         }
 
         // Initial load

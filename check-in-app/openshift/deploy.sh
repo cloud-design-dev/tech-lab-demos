@@ -84,9 +84,9 @@ fi
 echo -e "${YELLOW}   Starting application build...${NC}"
 oc start-build checkin-app --wait
 
-# Wait for deployment to be ready
+# Wait for deployment to be ready (using standard Deployment instead of DeploymentConfig)
 echo -e "${YELLOW}   Waiting for Check-in app to be ready...${NC}"
-oc rollout status dc/checkin-app --timeout=300s
+oc rollout status deployment/checkin-app --timeout=300s
 
 echo -e "${GREEN}✓ Check-in application deployed and ready${NC}"
 
@@ -108,15 +108,22 @@ echo -e "${BLUE}PostgreSQL:${NC}"
 oc get pods -l app=postgresql
 echo -e "\n${BLUE}Check-in App:${NC}"
 oc get pods -l app=checkin-app
+echo -e "\n${BLUE}Deployment Status:${NC}"
+oc get deployment checkin-app
 echo -e "\n${BLUE}Services:${NC}"
 oc get svc -l app=postgresql -o wide
 oc get svc -l app=checkin-app -o wide
 echo -e "\n${BLUE}Storage:${NC}"
 oc get pvc postgresql-pvc
+echo -e "\n${BLUE}Build Status:${NC}"
+oc get builds -l buildconfig=checkin-app --sort-by=.metadata.creationTimestamp
 
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN} Deployment Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
+
+# Get GitHub webhook URL for setup
+WEBHOOK_URL=$(oc describe bc/checkin-app | grep "Webhook GitHub:" | awk '{print $3}')
 
 if [ -n "$APP_URL" ]; then
     echo -e "${YELLOW}Next steps:${NC}"
@@ -124,4 +131,12 @@ if [ -n "$APP_URL" ]; then
     echo -e "2. Admin access: ${BLUE}https://${APP_URL}/admin/login${NC}"
     echo -e "3. Update IBM Cloud credentials in secret if needed"
     echo -e "4. Change admin password in production"
+    
+    if [ -n "$WEBHOOK_URL" ]; then
+        echo -e "5. Set up GitHub webhook for automated builds:"
+        echo -e "   ${BLUE}Webhook URL: ${WEBHOOK_URL}${NC}"
+        echo -e "   ${BLUE}Content Type: application/json${NC}"
+        echo -e "   ${BLUE}Secret: webhook-secret-2024${NC}"
+        echo -e "   ${BLUE}Events: Just push events${NC}"
+    fi
 fi

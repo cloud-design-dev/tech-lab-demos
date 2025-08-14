@@ -5,7 +5,9 @@ This directory contains OpenShift manifests for deploying the check-in applicati
 ## Architecture
 
 - **PostgreSQL Database**: 20GB persistent storage using `ibmc-vpc-block-5iops-tier`
-- **Check-in App**: Python Flask application with IBM Cloud SDK integration
+- **Check-in App**: Python Flask application with IBM Cloud SDK integration  
+- **Standard Kubernetes Deployment**: Uses Deployment (not deprecated DeploymentConfig)
+- **Automated Builds**: GitHub webhook integration for CI/CD
 - **High Availability**: 2 replicas with rolling updates
 - **Security**: Secrets for sensitive data, HTTPS with edge TLS termination
 
@@ -47,8 +49,23 @@ export IBM_CLOUD_ACCOUNT_ID="your-account-id-here"
    ```bash
    oc apply -f checkin-app.yaml
    oc start-build checkin-app --wait
-   oc rollout status dc/checkin-app
+   oc rollout status deployment/checkin-app
    ```
+
+4. **Set up GitHub Webhook (for automated builds):**
+   ```bash
+   # Get webhook URL
+   WEBHOOK_URL=$(oc describe bc/checkin-app | grep "Webhook GitHub:" | awk '{print $3}')
+   echo "Webhook URL: $WEBHOOK_URL"
+   ```
+   
+   In GitHub repository settings:
+   - Go to Settings → Webhooks → Add webhook
+   - Payload URL: Use the webhook URL from above
+   - Content type: `application/json`
+   - Secret: `webhook-secret-2024` (change in production)
+   - Events: Just push events
+   - Active: ✓
 
 ## Configuration
 
@@ -98,7 +115,7 @@ The PostgreSQL PVC uses IBM Cloud VPC Block Storage:
 
 ### Application Scaling
 ```bash
-oc scale dc/checkin-app --replicas=3
+oc scale deployment/checkin-app --replicas=3
 ```
 
 ### Database Scaling
@@ -131,13 +148,14 @@ oc get pods -l app=checkin-app
 ### View Logs
 ```bash
 oc logs deployment/postgresql
-oc logs dc/checkin-app
+oc logs deployment/checkin-app
 ```
 
 ### Database Connection Issues
 ```bash
 # Check database connectivity from app pod
-oc rsh deployment/checkin-app
+APP_POD=$(oc get pods -l app=checkin-app -o jsonpath='{.items[0].metadata.name}')
+oc rsh $APP_POD
 # Inside pod:
 python -c "
 import os, psycopg2
@@ -149,6 +167,18 @@ conn = psycopg2.connect(
 )
 print('Database connection successful!')
 "
+```
+
+### GitHub Webhook Issues
+```bash
+# Check BuildConfig webhook configuration
+oc describe bc/checkin-app | grep -A 5 "Webhook"
+
+# Test webhook manually
+oc start-build checkin-app
+
+# Check recent builds
+oc get builds -l buildconfig=checkin-app --sort-by=.metadata.creationTimestamp
 ```
 
 ### Storage Issues
