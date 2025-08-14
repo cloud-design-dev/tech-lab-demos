@@ -1,0 +1,112 @@
+[tools]
+node = "lts"
+python = "3.12"
+
+# Demo App V1 Local Development
+[tasks.v1-install]
+description = "Install V1 dependencies"
+run = """
+cd demo-app-v1
+source .venv/bin/activate
+uv pip install -r requirements.txt
+"""
+
+[tasks.v1-dev]
+description = "Run V1 development server locally"
+run = """
+cd demo-app-v1
+source .venv/bin/activate
+python3 app.py
+"""
+
+[tasks.v1-docker-build]
+description = "Build V1 Docker image"
+run = "cd demo-app-v1 && docker build -t openshift-demo-app-v1 ."
+
+[tasks.v1-docker-run]
+description = "Run V1 Docker container locally with resource limits"
+run = "cd demo-app-v1 && docker run -p 8085:8080 --memory=256m --cpus=0.5 --name openshift-demo-v1 openshift-demo-app-v1"
+
+[tasks.v1-docker-stop]
+description = "Stop V1 Docker container"
+run = "docker stop openshift-demo-v1 && docker rm openshift-demo-v1"
+
+# Demo App V2 Local Development
+[tasks.v2-install]
+description = "Install V2 dependencies including database support"
+run = """
+cd demo-app-v2
+source .venv/bin/activate
+uv pip install -r requirements.txt
+"""
+
+[tasks.v2-dev]
+description = "Run V2 development server locally"
+run = """
+cd demo-app-v2
+source .venv/bin/activate
+python3 app.py
+"""
+
+[tasks.v2-docker-build]
+description = "Build V2 Docker image with database support"
+run = "cd demo-app-v2 && docker build -t openshift-demo-app-v2 ."
+
+[tasks.v2-docker-run]
+description = "Run V2 Docker container locally with SQLite"
+run = "cd demo-app-v2 && docker run -p 8080:8080 --name openshift-demo-v2 openshift-demo-app-v2"
+
+[tasks.v2-docker-stop]
+description = "Stop V2 Docker container"
+run = "docker stop openshift-demo-v2 && docker rm openshift-demo-v2"
+
+# Check-in App Local Development
+[tasks.checkin-install]
+description = "Install check-in app dependencies in virtual environment"
+run = [
+    "cd check-in-app",
+    "python -m venv venv",
+    "source venv/bin/activate && pip install -r requirements.txt",
+    "echo 'Remember to create .env file with IBM_CLOUD_API_KEY and IBM_CLOUD_ACCOUNT_ID'"
+]
+
+[tasks.checkin-dev]
+description = "Run check-in development server locally"
+run = "cd check-in-app && source venv/bin/activate && PORT=8081 python app.py"
+
+[tasks.checkin-docker-build]
+description = "Build check-in Docker image"
+run = "cd check-in-app && docker build -t checkin-app ."
+
+[tasks.checkin-docker-run]
+description = "Run check-in Docker container locally"
+run = "cd check-in-app && docker run -p 8081:8080 --name checkin-app checkin-app"
+
+[tasks.checkin-docker-stop]
+description = "Stop check-in Docker container"
+run = "docker stop checkin-app && docker rm checkin-app"
+
+[tasks.checkin-clean]
+description = "Clean check-in app (remove virtual env and SQLite DB)"
+run = [
+    "cd check-in-app",
+    "rm -rf venv/",
+    "rm -f checkin.db"
+]
+
+# Development Utilities
+[tasks.install-all]
+description = "Install dependencies for all apps"
+run = [
+    "mise run v1-install",
+    "mise run v2-install", 
+    "mise run checkin-install"
+]
+
+[tasks.clean-docker]
+description = "Stop and remove all demo containers"
+run = [
+    "mise run v1-docker-stop 2>/dev/null || echo 'V1 container not running'",
+    "mise run v2-docker-stop 2>/dev/null || echo 'V2 container not running'",
+    "mise run checkin-docker-stop 2>/dev/null || echo 'Check-in container not running'"
+]

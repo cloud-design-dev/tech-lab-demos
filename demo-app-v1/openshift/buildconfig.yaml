@@ -1,0 +1,43 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: openshift-demo-app-v1
+  labels:
+    app: openshift-demo-app-v1
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: openshift-demo-app-v1:latest
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-repo/tech-labs-dallas.git
+    contextDir: demo-app-v1
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        namespace: openshift
+        name: python:3.11
+      env:
+      - name: UPGRADE_PIP_TO_LATEST
+        value: "true"
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: github-webhook-secret
+  - type: ImageChange
+    imageChange: {}
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: openshift-demo-app-v1
+  labels:
+    app: openshift-demo-app-v1
+spec:
+  lookupPolicy:
+    local: false

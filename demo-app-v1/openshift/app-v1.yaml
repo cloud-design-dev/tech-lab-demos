@@ -1,0 +1,93 @@
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: openshift-demo-app-v1
+  labels:
+    app: openshift-demo-app-v1
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    app: openshift-demo-app-v1
+  template:
+    metadata:
+      labels:
+        app: openshift-demo-app-v1
+        version: v1
+    spec:
+      containers:
+      - name: demo-app-v1
+        image: openshift-demo-app-v1:latest
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "8080"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+    imageChangeParams:
+      automatic: true
+      containerNames:
+      - demo-app-v1
+      from:
+        kind: ImageStreamTag
+        name: openshift-demo-app-v1:latest
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openshift-demo-app-v1
+  labels:
+    app: openshift-demo-app-v1
+spec:
+  ports:
+  - name: 8080-tcp
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: openshift-demo-app-v1
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openshift-demo-app-v1
+  labels:
+    app: openshift-demo-app-v1
+spec:
+  to:
+    kind: Service
+    name: openshift-demo-app-v1
+    weight: 100
+  port:
+    targetPort: 8080-tcp
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

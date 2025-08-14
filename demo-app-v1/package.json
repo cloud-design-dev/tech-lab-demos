@@ -1,0 +1,18 @@
+{
+  "name": "openshift-demo-app",
+  "version": "1.0.0",
+  "description": "OpenShift Demo Lab Application",
+  "main": "app.py",
+  "scripts": {
+    "start": "python app.py",
+    "dev": "python app.py",
+    "build": "echo 'Build complete - static assets ready'",
+    "test": "echo 'No tests specified'",
+    "lint": "echo 'No linting configured'"
+  },
+  "keywords": ["openshift", "demo", "flask", "container"],
+  "author": "Tech Labs Dallas",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

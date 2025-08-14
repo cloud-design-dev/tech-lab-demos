@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registered Users - OpenShift Demo Lab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Lab Participants</h1>
+            <p>Currently registered users and group assignments</p>
+        </header>
+
+        <div class="back-link">
+            <a href="/">← Back to Check-in</a>
+        </div>
+
+        <div class="stats-panel">
+            <h3>Registration Statistics</h3>
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-item">
+                    <span class="number" id="total-users">-</span>
+                    <span class="label">Total Users</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number" id="total-groups">-</span>
+                    <span class="label">Total Groups</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number" id="full-groups">-</span>
+                    <span class="label">Full Groups</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number" id="avg-size">-</span>
+                    <span class="label">Avg Group Size</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="groups-section">
+            <h2 style="color: #d43f00; text-transform: uppercase; margin-bottom: 2rem;">Group Assignments</h2>
+            <div id="groups-container">
+                <div class="loading">Loading group assignments...</div>
+            </div>
+        </div>
+
+        <div class="admin-link">
+            <button onclick="refreshData()" class="submit-btn" style="width: auto; margin: 0 auto; display: block;">
+                Refresh Data
+            </button>
+        </div>
+
+        <footer>
+            <p>OpenShift Demo Lab Registration | Admin View</p>
+        </footer>
+    </div>
+
+    <script>
+        let refreshInterval;
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                
+                document.getElementById('total-users').textContent = stats.total_users || 0;
+                document.getElementById('total-groups').textContent = stats.total_groups || 0;
+                document.getElementById('full-groups').textContent = stats.full_groups || 0;
+                document.getElementById('avg-size').textContent = stats.average_group_size || 0;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadRegisteredUsers() {
+            try {
+                const response = await fetch('/api/registered');
+                const data = await response.json();
+                
+                const container = document.getElementById('groups-container');
+                
+                if (data.total_users === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #666; font-style: italic;">No users registered yet.</p>';
+                    return;
+                }
+
+                // Group users by their group assignments
+                const groupedUsers = data.grouped_users || {};
+                
+                let html = '';
+                for (const [groupName, users] of Object.entries(groupedUsers)) {
+                    const groupData = data.groups.find(g => g.name === groupName);
+                    const isFull = groupData && groupData.is_full;
+                    
+                    html += `
+                        <div class="group-card ${isFull ? 'full' : ''}">
+                            <h4>${groupName} ${isFull ? '(Full)' : ''}</h4>
+                            <div class="group-members">
+                    `;
+                    
+                    users.forEach(user => {
+                        const checkinTime = new Date(user.checked_in_at).toLocaleString();
+                        html += `
+                            <div class="member-item">
+                                <div class="email">${user.email}</div>
+                                <div class="time">Checked in: ${checkinTime}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading registered users:', error);
+                document.getElementById('groups-container').innerHTML = 
+                    '<p style="text-align: center; color: #f44336;">Error loading data. Please try refreshing the page.</p>';
+            }
+        }
+
+        async function refreshData() {
+            await Promise.all([loadStats(), loadRegisteredUsers()]);
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+            
+            // Auto-refresh every 30 seconds
+            refreshInterval = setInterval(refreshData, 30000);
+        });
+
+        // Clean up interval when page is hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                }
+            } else {
+                // Resume auto-refresh when page becomes visible
+                refreshData();
+                refreshInterval = setInterval(refreshData, 30000);
+            }
+        });
+    </script>
+</body>
+</html>

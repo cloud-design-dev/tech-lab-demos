@@ -1,0 +1,131 @@
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: openshift-demo-app-v2
+  labels:
+    app: openshift-demo-app-v2
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    app: openshift-demo-app-v2
+  template:
+    metadata:
+      labels:
+        app: openshift-demo-app-v2
+        version: v2
+    spec:
+      containers:
+      - name: openshift-demo-app-v2
+        image: openshift-demo-app-v2:latest
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "8080"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: database-url
+              optional: true
+        - name: POSTGRESQL_SERVICE_HOST
+          value: "postgresql"
+        - name: POSTGRESQL_SERVICE_PORT
+          value: "5432"
+        - name: POSTGRESQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: database-name
+              optional: true
+        - name: POSTGRESQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: database-user
+              optional: true
+        - name: POSTGRESQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: database-password
+              optional: true
+        - name: TRAFFIC_GENERATOR_URL
+          value: "https://traffic-gen-fn.17rgnniognng.us-south.codeengine.appdomain.cloud"
+        - name: SQLITE_PATH
+          value: "/app/data/v2_demo.db"
+        volumeMounts:
+        - name: sqlite-storage
+          mountPath: /app/data
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: sqlite-storage
+        persistentVolumeClaim:
+          claimName: v2-sqlite-pvc
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+    imageChangeParams:
+      automatic: true
+      containerNames:
+      - openshift-demo-app-v2
+      from:
+        kind: ImageStreamTag
+        name: openshift-demo-app-v2:latest
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openshift-demo-app-v2
+  labels:
+    app: openshift-demo-app-v2
+    version: v2
+spec:
+  ports:
+  - name: 8080-tcp
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: openshift-demo-app-v2
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openshift-demo-app-v2
+  labels:
+    app: openshift-demo-app-v2
+    version: v2
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: openshift-demo-app-v2
+    weight: 100
+  wildcardPolicy: None

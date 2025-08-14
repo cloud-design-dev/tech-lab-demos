@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenShift Demo Lab - Check In</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Lab Registration</h1>
+            <p>Check in for the OpenShift Demo Lab</p>
+        </header>
+
+        <div class="checkin-card">
+            <h2>Enter Your Email</h2>
+            <form id="checkin-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="your.email@company.com" autocomplete="email">
+                </div>
+                <button type="submit" class="submit-btn" id="submit-btn">
+                    Check In
+                </button>
+            </form>
+
+            <div id="result-panel" class="result-panel">
+                <h3 id="result-title"></h3>
+                <p id="result-message"></p>
+                <div id="group-info" class="group-info" style="display: none;">
+                    <p><strong>Your Group:</strong> <span id="group-name"></span></p>
+                    <p><strong>Group Members:</strong> <span id="group-members"></span>/<span id="group-max"></span></p>
+                    <p><strong>Checked in at:</strong> <span id="checkin-time"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-link">
+            <button id="lookup-btn" class="secondary-btn">Find My Group</button>
+            <a href="/registered">View Registered Users</a>
+        </div>
+
+        <footer>
+            <p>OpenShift Demo Lab Registration | Version 1.0.0</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('checkin-form');
+            const emailInput = document.getElementById('email');
+            const submitBtn = document.getElementById('submit-btn');
+            const lookupBtn = document.getElementById('lookup-btn');
+            const resultPanel = document.getElementById('result-panel');
+            const resultTitle = document.getElementById('result-title');
+            const resultMessage = document.getElementById('result-message');
+            const groupInfo = document.getElementById('group-info');
+            const groupName = document.getElementById('group-name');
+            const groupMembers = document.getElementById('group-members');
+            const groupMax = document.getElementById('group-max');
+            const checkinTime = document.getElementById('checkin-time');
+
+            function showResult(type, title, message, data = null) {
+                resultPanel.className = `result-panel ${type}`;
+                resultPanel.style.display = 'block';
+                resultTitle.textContent = title;
+                resultMessage.textContent = message;
+
+                if (data && data.group_name) {
+                    groupInfo.style.display = 'block';
+                    groupName.textContent = data.group_name;
+                    groupMembers.textContent = data.group_members || 'N/A';
+                    groupMax.textContent = data.group_max || '3';
+                    
+                    const checkinDate = new Date(data.checked_in_at);
+                    checkinTime.textContent = checkinDate.toLocaleString();
+                } else {
+                    groupInfo.style.display = 'none';
+                }
+            }
+
+            function formatTime(isoString) {
+                const date = new Date(isoString);
+                return date.toLocaleString();
+            }
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const email = emailInput.value.trim();
+                if (!email) {
+                    showResult('error', 'Error', 'Please enter your email address.');
+                    return;
+                }
+
+                // Disable form during submission
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Checking In...';
+                resultPanel.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/checkin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email: email })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        if (data.already_registered) {
+                            showResult('warning', 'Already Checked In', 
+                                     'You have already checked in for this lab.', data);
+                        } else {
+                            showResult('success', 'Welcome!', 
+                                     'You have been successfully checked in and assigned to a group.', data);
+                        }
+                    } else {
+                        showResult('error', 'Check-in Failed', data.error || 'An error occurred during check-in.');
+                    }
+                } catch (error) {
+                    console.error('Check-in error:', error);
+                    showResult('error', 'Network Error', 'Unable to connect to the server. Please try again.');
+                } finally {
+                    // Re-enable form
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Check In';
+                }
+            });
+
+            // Group lookup handler
+            lookupBtn.addEventListener('click', async function() {
+                const email = emailInput.value.trim();
+                if (!email) {
+                    showResult('error', 'Error', 'Please enter your email address to look up your group.');
+                    return;
+                }
+
+                // Disable button during lookup
+                lookupBtn.disabled = true;
+                lookupBtn.textContent = 'Looking up...';
+                resultPanel.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/lookup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email: email })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showResult('info', 'Group Found!', 
+                                 `You are in group: ${data.user.group_name || 'Not assigned yet'}`, data.user);
+                        
+                        if (data.group && data.group.members) {
+                            groupMembers.textContent = data.group.members.length;
+                            // Show group members in a more detailed way
+                            resultMessage.innerHTML = `You are in group: <strong>${data.user.group_name}</strong><br>` +
+                                                    `Group members: ${data.group.members.join(', ')}<br>` +
+                                                    `Checked in: ${formatDateTime(data.user.checked_in_at)}`;
+                        }
+                    } else {
+                        showResult('error', 'Not Found', data.error || 'Could not find your group information.');
+                    }
+                } catch (error) {
+                    console.error('Lookup error:', error);
+                    showResult('error', 'Network Error', 'Unable to connect to the server. Please try again.');
+                } finally {
+                    // Re-enable button
+                    lookupBtn.disabled = false;
+                    lookupBtn.textContent = 'Find My Group';
+                }
+            });
+
+            // Clear result when user starts typing again
+            emailInput.addEventListener('input', function() {
+                resultPanel.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
