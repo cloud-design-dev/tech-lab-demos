@@ -165,7 +165,7 @@
                             // Show group members in a more detailed way
                             resultMessage.innerHTML = `You are in group: <strong>${data.user.group_name}</strong><br>` +
                                                     `Group members: ${data.group.members.join(', ')}<br>` +
-                                                    `Checked in: ${formatDateTime(data.user.checked_in_at)}`;
+                                                    `Checked in: ${formatTime(data.user.checked_in_at)}`;
                         }
                     } else {
                         showResult('error', 'Not Found', data.error || 'Could not find your group information.');

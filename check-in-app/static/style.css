@@ -6,8 +6,8 @@
 
 body {
     font-family: 'Courier New', monospace;
-    background: #f8f8f8;
-    color: #333;
+    background: #f4f4f4;
+    color: #161616;
     line-height: 1.6;
     min-height: 100vh;
 }
@@ -21,14 +21,14 @@ body {
 header {
     text-align: center;
     margin-bottom: 3rem;
-    border-bottom: 4px solid #d43f00;
+    border-bottom: 4px solid #0f62fe;
     padding-bottom: 2rem;
 }
 
 header h1 {
     font-size: 3rem;
     font-weight: bold;
-    color: #d43f00;
+    color: #0f62fe;
     text-transform: uppercase;
     letter-spacing: 2px;
     margin-bottom: 0.5rem;
@@ -36,20 +36,20 @@ header h1 {
 
 header p {
     font-size: 1.2rem;
-    color: #666;
+    color: #525252;
 }
 
 .checkin-card {
     background: #fff;
-    border: 3px solid #d43f00;
+    border: 3px solid #0f62fe;
     border-radius: 12px;
     padding: 2rem;
     margin: 3rem 0;
-    box-shadow: 0 4px 16px rgba(212, 63, 0, 0.2);
+    box-shadow: 0 4px 16px rgba(15, 98, 254, 0.2);
 }
 
 .checkin-card h2 {
-    color: #d43f00;
+    color: #0f62fe;
     margin-bottom: 1.5rem;
     text-transform: uppercase;
     text-align: center;
@@ -64,7 +64,7 @@ header p {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: bold;
-    color: #333;
+    color: #161616;
     text-transform: uppercase;
     font-size: 0.9rem;
 }
@@ -81,12 +81,12 @@ header p {
 
 .form-group input[type="email"]:focus {
     outline: none;
-    border-color: #d43f00;
-    box-shadow: 0 0 8px rgba(212, 63, 0, 0.3);
+    border-color: #0f62fe;
+    box-shadow: 0 0 8px rgba(15, 98, 254, 0.3);
 }
 
 .submit-btn {
-    background: #d43f00;
+    background: #0f62fe;
     color: #fff;
     border: none;
     padding: 1rem 2rem;
@@ -102,13 +102,13 @@ header p {
 }
 
 .submit-btn:hover {
-    background: #b23600;
-    box-shadow: 0 4px 8px rgba(212, 63, 0, 0.3);
+    background: #0353e9;
+    box-shadow: 0 4px 8px rgba(15, 98, 254, 0.3);
     transform: translateY(-1px);
 }
 
 .submit-btn:disabled {
-    background: #ccc;
+    background: #c6c6c6;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -166,12 +166,12 @@ header p {
 }
 
 .group-info strong {
-    color: #d43f00;
+    color: #0f62fe;
 }
 
 .loading {
     text-align: center;
-    color: #666;
+    color: #6f6f6f;
     font-style: italic;
 }
 
@@ -187,7 +187,7 @@ header p {
 }
 
 .admin-link a {
-    color: #d43f00;
+    color: #0f62fe;
     text-decoration: none;
     font-weight: bold;
     text-transform: uppercase;
@@ -195,11 +195,12 @@ header p {
 }
 
 .admin-link a:hover {
+    color: #054ada;
     text-decoration: underline;
 }
 
 .secondary-btn {
-    background: #6c757d;
+    background: #393939;
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
@@ -213,13 +214,13 @@ header p {
 }
 
 .secondary-btn:hover {
-    background: #545b62;
-    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+    background: #4c4c4c;
+    box-shadow: 0 4px 8px rgba(57, 57, 57, 0.3);
     transform: translateY(-1px);
 }
 
 .secondary-btn:disabled {
-    background: #ccc;
+    background: #c6c6c6;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -228,7 +229,7 @@ header p {
 /* Registered users page specific styles */
 .stats-panel {
     background: #fff;
-    border: 2px solid #d43f00;
+    border: 2px solid #0f62fe;
     border-radius: 8px;
     padding: 1.5rem;
     margin: 2rem 0;
@@ -236,7 +237,7 @@ header p {
 }
 
 .stats-panel h3 {
-    color: #d43f00;
+    color: #0f62fe;
     margin-bottom: 1rem;
     text-transform: uppercase;
 }
@@ -257,14 +258,14 @@ header p {
 .stat-item .number {
     font-size: 2rem;
     font-weight: bold;
-    color: #d43f00;
+    color: #0f62fe;
     display: block;
 }
 
 .stat-item .label {
     font-size: 0.8rem;
     text-transform: uppercase;
-    color: #666;
+    color: #6f6f6f;
     margin-top: 0.5rem;
 }
 
@@ -287,7 +288,7 @@ header p {
 }
 
 .group-card h4 {
-    color: #d43f00;
+    color: #0f62fe;
     margin-bottom: 1rem;
     text-transform: uppercase;
 }
@@ -310,7 +311,7 @@ header p {
 }
 
 .member-item .time {
-    color: #666;
+    color: #6f6f6f;
     font-size: 0.8rem;
 }
 
@@ -320,7 +321,7 @@ header p {
 }
 
 .back-link a {
-    color: #d43f00;
+    color: #0f62fe;
     text-decoration: none;
     font-weight: bold;
     text-transform: uppercase;
@@ -328,6 +329,7 @@ header p {
 }
 
 .back-link a:hover {
+    color: #054ada;
     text-decoration: underline;
 }
 
@@ -335,8 +337,8 @@ footer {
     text-align: center;
     margin-top: 4rem;
     padding-top: 2rem;
-    border-top: 2px solid #ddd;
-    color: #888;
+    border-top: 2px solid #e0e0e0;
+    color: #8d8d8d;
 }
 
 @media (max-width: 768px) {

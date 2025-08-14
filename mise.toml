@@ -94,6 +94,19 @@ run = [
     "rm -f checkin.db"
 ]
 
+# Check-in App OpenShift Deployment
+[tasks.checkin-deploy-openshift]
+description = "Deploy check-in app to OpenShift with PostgreSQL"
+run = "cd check-in-app/openshift && ./deploy.sh"
+
+[tasks.checkin-test-config]
+description = "Test check-in app configuration and dependencies"
+run = [
+    "cd check-in-app",
+    "source venv/bin/activate",
+    "python -c 'from app import get_database_url, validate_user_with_ibm_cloud; print(\"✓ Configuration test passed\")'"
+]
+
 # Development Utilities
 [tasks.install-all]
 description = "Install dependencies for all apps"

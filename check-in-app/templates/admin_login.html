@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - OpenShift Demo Lab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Admin Access</h1>
+            <p>Enter admin password to view registered users</p>
+        </header>
+
+        <div class="checkin-card">
+            <h2>Admin Login</h2>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="password">Admin Password</label>
+                    <input type="password" id="password" name="password" required 
+                           placeholder="Enter admin password" autocomplete="current-password">
+                </div>
+                
+                {% if error %}
+                <div class="result-panel error" style="display: block; margin-bottom: 1rem;">
+                    <h3>Access Denied</h3>
+                    <p>{{ error }}</p>
+                </div>
+                {% endif %}
+                
+                <button type="submit" class="submit-btn">
+                    Login
+                </button>
+            </form>
+        </div>
+
+        <div class="back-link">
+            <a href="/">← Back to Check-in</a>
+        </div>
+
+        <footer>
+            <p>OpenShift Demo Lab Registration | Admin Access</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Focus on password input
+            document.getElementById('password').focus();
+        });
+    </script>
+</body>
+</html>

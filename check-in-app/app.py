@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 import os
 import json
 import time
@@ -20,16 +20,41 @@ except ImportError:
 
 app = Flask(__name__)
 
-# Database configuration  
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///checkin.db')
-if database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+# Database configuration with multiple environment variable support
+def get_database_url():
+    """Get database URL from environment variables with priority fallback"""
+    # Priority 1: Full DATABASE_URL
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        # Handle postgres:// vs postgresql:// prefix
+        if database_url.startswith('postgres://'):
+            database_url = database_url.replace('postgres://', 'postgresql://', 1)
+        return database_url
+    
+    # Priority 2: Individual PostgreSQL components
+    postgres_user = os.environ.get('POSTGRES_USER')
+    postgres_password = os.environ.get('POSTGRES_PASSWORD') 
+    postgres_host = os.environ.get('POSTGRES_HOST')
+    postgres_port = os.environ.get('POSTGRES_PORT', '5432')
+    postgres_db = os.environ.get('POSTGRES_DB')
+    
+    if all([postgres_user, postgres_password, postgres_host, postgres_db]):
+        return f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+    
+    # Priority 3: SQLite fallback
+    return 'sqlite:///checkin.db'
 
+database_url = get_database_url()
 print(f"Using database: {database_url}")
+print(f"Database type: {'PostgreSQL' if database_url.startswith('postgresql://') else 'SQLite'}")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 db = SQLAlchemy(app)
+
+# Admin authentication configuration
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'demo-admin-2024')
 
 # Database initialization function
 def ensure_database():
@@ -221,13 +246,41 @@ def assign_user_to_group(user):
     db.session.commit()
     return group
 
+def is_admin_authenticated():
+    """Check if the current session is authenticated as admin"""
+    return session.get('admin_authenticated', False)
+
+def authenticate_admin(password):
+    """Authenticate admin password and set session"""
+    if password == ADMIN_PASSWORD:
+        session['admin_authenticated'] = True
+        return True
+    return False
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/registered')
 def registered_users():
+    if not is_admin_authenticated():
+        return redirect(url_for('admin_login'))
     return render_template('registered.html')
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if authenticate_admin(password):
+            return redirect(url_for('registered_users'))
+        else:
+            return render_template('admin_login.html', error='Invalid password')
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_authenticated', None)
+    return redirect(url_for('index'))
 
 @app.route('/api/checkin', methods=['POST'])
 def checkin_user():

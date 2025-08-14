@@ -1,0 +1,236 @@
+---
+# Check-in App Secret for sensitive environment variables
+apiVersion: v1
+kind: Secret
+metadata:
+  name: checkin-app-secret
+  namespace: check-in-demo
+type: Opaque
+data:
+  # Base64 encoded values (change in production)
+  # IBM_CLOUD_API_KEY: your-api-key-here (base64 encoded)
+  # IBM_CLOUD_ACCOUNT_ID: your-account-id-here (base64 encoded)
+  # FLASK_SECRET_KEY: super-secret-flask-key-2024 -> c3VwZXItc2VjcmV0LWZsYXNrLWtleS0yMDI0
+  # ADMIN_PASSWORD: demo-admin-2024 -> ZGVtby1hZG1pbi0yMDI0
+  IBM_CLOUD_API_KEY: ""  # TODO: Set this before deployment
+  IBM_CLOUD_ACCOUNT_ID: ""  # TODO: Set this before deployment  
+  FLASK_SECRET_KEY: c3VwZXItc2VjcmV0LWZsYXNrLWtleS0yMDI0
+  ADMIN_PASSWORD: ZGVtby1hZG1pbi0yMDI0
+---
+# Check-in App ConfigMap for non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkin-app-config
+  namespace: check-in-demo
+data:
+  POSTGRES_HOST: postgresql-service
+  POSTGRES_PORT: "5432"
+  ENVIRONMENT: production
+---
+# Check-in App Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkin-app-service
+  namespace: check-in-demo
+  labels:
+    app: checkin-app
+spec:
+  selector:
+    app: checkin-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP
+---
+# Check-in App BuildConfig for S2I builds
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: checkin-app
+  namespace: check-in-demo
+  labels:
+    app: checkin-app
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-repo/tech-lab-demos.git  # TODO: Update with actual repo
+      ref: main
+    contextDir: check-in-app
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: python:3.12-ubi8
+        namespace: openshift
+      env:
+      - name: UPGRADE_PIP_TO_LATEST
+        value: "true"
+  output:
+    to:
+      kind: ImageStreamTag
+      name: checkin-app:latest
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+---
+# Check-in App ImageStream
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: checkin-app
+  namespace: check-in-demo
+  labels:
+    app: checkin-app
+spec:
+  lookupPolicy:
+    local: false
+---
+# Check-in App DeploymentConfig
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: checkin-app
+  namespace: check-in-demo
+  labels:
+    app: checkin-app
+spec:
+  replicas: 2
+  selector:
+    app: checkin-app
+  strategy:
+    type: Rolling
+    rollingParams:
+      updatePeriodSeconds: 1
+      intervalSeconds: 1
+      timeoutSeconds: 600
+      maxUnavailable: 25%
+      maxSurge: 25%
+  template:
+    metadata:
+      labels:
+        app: checkin-app
+    spec:
+      containers:
+      - name: checkin-app
+        image: checkin-app:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        # Database connection environment variables
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_DB
+        - name: POSTGRES_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: checkin-app-config
+              key: POSTGRES_HOST
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: checkin-app-config
+              key: POSTGRES_PORT
+        # Application secrets
+        - name: IBM_CLOUD_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: checkin-app-secret
+              key: IBM_CLOUD_API_KEY
+        - name: IBM_CLOUD_ACCOUNT_ID
+          valueFrom:
+            secretKeyRef:
+              name: checkin-app-secret
+              key: IBM_CLOUD_ACCOUNT_ID
+        - name: FLASK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: checkin-app-secret
+              key: FLASK_SECRET_KEY
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: checkin-app-secret
+              key: ADMIN_PASSWORD
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: checkin-app-config
+              key: ENVIRONMENT
+        # Application configuration
+        - name: PORT
+          value: "8080"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+    imageChangeParams:
+      automatic: true
+      containerNames:
+      - checkin-app
+      from:
+        kind: ImageStreamTag
+        name: checkin-app:latest
+---
+# Check-in App Route for external access
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: checkin-app-route
+  namespace: check-in-demo
+  labels:
+    app: checkin-app
+spec:
+  to:
+    kind: Service
+    name: checkin-app-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
