@@ -13,7 +13,7 @@ spec:
   source:
     type: Git
     git:
-      uri: https://github.com/your-repo/tech-lab-demos.git  # Replace with actual repo URL
+      uri: https://github.com/cloud-design-dev/tech-lab-demos.git  # Replace with actual repo URL
     contextDir: demo-app-v3
   strategy:
     type: Source

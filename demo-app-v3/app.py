@@ -755,7 +755,7 @@ def get_load_status():
 def get_hpa_status():
     """Get HPA scaling information"""
     try:
-        # Try to get HPA status via oc command
+        # Try to get HPA status via oc command first
         result = subprocess.run(['oc', 'get', 'hpa', 'demo-app-v3', '-o', 'json'], 
                               capture_output=True, text=True, timeout=10)
         
@@ -766,30 +766,81 @@ def get_hpa_status():
             status = hpa_data.get('status', {})
             spec = hpa_data.get('spec', {})
             
+            # Get current metrics for both CPU and memory
+            current_metrics = status.get('currentMetrics', [])
+            cpu_current = None
+            memory_current = None
+            
+            for metric in current_metrics:
+                if metric.get('type') == 'Resource':
+                    resource_name = metric.get('resource', {}).get('name')
+                    if resource_name == 'cpu':
+                        cpu_current = metric.get('resource', {}).get('current', {}).get('averageUtilization')
+                    elif resource_name == 'memory':
+                        memory_current = metric.get('resource', {}).get('current', {}).get('averageUtilization')
+            
+            # Get target metrics
+            target_metrics = spec.get('metrics', [])
+            cpu_target = None
+            memory_target = None
+            
+            for metric in target_metrics:
+                if metric.get('type') == 'Resource':
+                    resource_name = metric.get('resource', {}).get('name')
+                    if resource_name == 'cpu':
+                        cpu_target = metric.get('resource', {}).get('target', {}).get('averageUtilization')
+                    elif resource_name == 'memory':
+                        memory_target = metric.get('resource', {}).get('target', {}).get('averageUtilization')
+            
             return jsonify({
                 "hpa_found": True,
                 "current_replicas": status.get('currentReplicas', 0),
                 "desired_replicas": status.get('desiredReplicas', 0),
                 "min_replicas": spec.get('minReplicas', 0),
                 "max_replicas": spec.get('maxReplicas', 0),
-                "current_cpu_percent": status.get('currentCPUUtilizationPercentage'),
-                "target_cpu_percent": next((m['resource']['target']['averageUtilization'] 
-                                          for m in spec.get('metrics', []) 
-                                          if m.get('type') == 'Resource' and m['resource']['name'] == 'cpu'), None),
-                "conditions": status.get('conditions', [])
+                "current_cpu_percent": cpu_current,
+                "target_cpu_percent": cpu_target,
+                "current_memory_percent": memory_current,
+                "target_memory_percent": memory_target,
+                "conditions": status.get('conditions', []),
+                "last_scale_time": status.get('lastScaleTime'),
+                "debug_info": {
+                    "raw_status": status,
+                    "raw_spec": spec
+                }
             })
         else:
+            # Check if oc command is available and debug
+            oc_check = subprocess.run(['which', 'oc'], capture_output=True, text=True)
+            kubectl_check = subprocess.run(['which', 'kubectl'], capture_output=True, text=True)
+            
+            debug_info = {
+                "oc_available": oc_check.returncode == 0,
+                "kubectl_available": kubectl_check.returncode == 0,
+                "oc_error": result.stderr if result.stderr else "No error output",
+                "return_code": result.returncode
+            }
+            
             return jsonify({
                 "hpa_found": False,
-                "error": "HPA not found or not accessible",
-                "message": "Deploy HPA to see scaling status"
+                "error": "HPA command failed",
+                "message": "Check if HPA exists and pod has cluster access",
+                "debug_info": debug_info
             })
             
+    except FileNotFoundError:
+        return jsonify({
+            "hpa_found": False,
+            "error": "oc command not found in container",
+            "message": "HPA status requires oc/kubectl CLI in pod",
+            "debug_info": {"oc_not_found": True}
+        })
     except Exception as e:
         return jsonify({
             "hpa_found": False,
             "error": str(e),
-            "message": "Unable to check HPA status"
+            "message": "Unable to check HPA status",
+            "debug_info": {"exception": str(e)}
         })
 
 @app.route('/api/pod-info')

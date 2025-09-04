@@ -19,6 +19,7 @@ spec:
       containers:
       - name: demo-app-v3
         image: demo-app-v3:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
           protocol: TCP

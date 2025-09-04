@@ -392,14 +392,21 @@ class OpenShiftDemo {
             const hpa = await response.json();
             
             if (hpa.hpa_found) {
+                let metrics_display = '';
+                if (hpa.current_cpu_percent !== null && hpa.target_cpu_percent !== null) {
+                    metrics_display += `CPU: ${hpa.current_cpu_percent}% / ${hpa.target_cpu_percent}%<br>`;
+                }
+                if (hpa.current_memory_percent !== null && hpa.target_memory_percent !== null) {
+                    metrics_display += `Memory: ${hpa.current_memory_percent}% / ${hpa.target_memory_percent}%<br>`;
+                }
+                
                 this.updateStatus('hpa-status', `
-                    <strong>📊 HPA Status</strong><br>
-                    Current Replicas: ${hpa.current_replicas}<br>
-                    Desired Replicas: ${hpa.desired_replicas}<br>
-                    Range: ${hpa.min_replicas}-${hpa.max_replicas}<br>
-                    CPU Target: ${hpa.target_cpu_percent}%<br>
-                    Current CPU: ${hpa.current_cpu_percent || 'Unknown'}%<br>
-                    <em>Check pod scaling in OpenShift console</em>
+                    <strong>✅ HPA Active & Scaling</strong><br>
+                    Current Pods: ${hpa.current_replicas} / Desired: ${hpa.desired_replicas}<br>
+                    Range: ${hpa.min_replicas}-${hpa.max_replicas} pods<br>
+                    ${metrics_display}
+                    ${hpa.last_scale_time ? `Last Scale: ${new Date(hpa.last_scale_time).toLocaleTimeString()}` : ''}<br>
+                    <em>HPA is working! 🎉</em>
                 `);
             } else {
                 this.updateStatus('hpa-status', `
@@ -452,11 +459,16 @@ class OpenShiftDemo {
             const hpa = await response.json();
             
             if (hpa.hpa_found) {
+                let status_color = hpa.current_replicas > hpa.min_replicas ? '🟢' : '🔵';
+                let metrics_summary = '';
+                if (hpa.current_cpu_percent && hpa.current_memory_percent) {
+                    metrics_summary = `CPU: ${hpa.current_cpu_percent}%, Mem: ${hpa.current_memory_percent}%<br>`;
+                }
+                
                 this.updateStatus('hpa-status', `
-                    <strong>📊 Auto-Scaling Status</strong><br>
-                    Current Pods: ${hpa.current_replicas}<br>
-                    Target Range: ${hpa.min_replicas}-${hpa.max_replicas}<br>
-                    CPU Target: ${hpa.target_cpu_percent}%<br>
+                    <strong>${status_color} Auto-Scaling Active</strong><br>
+                    Pods: ${hpa.current_replicas}/${hpa.min_replicas}-${hpa.max_replicas}<br>
+                    ${metrics_summary}
                     <button onclick="openShiftDemo.checkHPA()" class="btn-small">Refresh HPA</button>
                 `);
             } else {
