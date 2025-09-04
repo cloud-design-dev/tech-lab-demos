@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenShift Demo Lab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 OpenShift Demo Lab</h1>
+            <p>Follow the journey from cluster to profit</p>
+        </header>
+
+        <div class="progress-path">
+            <div class="path-row top-row">
+                <div class="step completed" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Deploy ROKS Cluster</h3>
+                        <p>Infrastructure setup</p>
+                    </div>
+                    <div class="step-status">
+                        <div class="status-badge completed">DONE</div>
+                    </div>
+                </div>
+
+                <div class="connector">→</div>
+
+                <div class="step completed" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Dashboard Overview</h3>
+                        <p>Explore the admin panel</p>
+                    </div>
+                    <div class="step-status">
+                        <div class="status-badge completed">DONE</div>
+                    </div>
+                </div>
+
+                <div class="connector">→</div>
+
+                <div class="step completed" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Deploy Demo App</h3>
+                        <p>Application deployed</p>
+                    </div>
+                    <div class="step-status">
+                        <div class="status-badge completed">DONE</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="path-row bottom-row">
+                <div class="step completed" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Add Persistence</h3>
+                        <p>Database integration active</p>
+                    </div>
+                    <div class="step-status">
+                        <div class="status-badge completed">DONE</div>
+                    </div>
+                </div>
+
+                <div class="connector" id="connector-4-5">→</div>
+
+                <div class="step current" data-step="5">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h3>Resource Limits & Scaling</h3>
+                        <p>Monitor resources & HPA</p>
+                    </div>
+                    <div class="step-status">
+                        <div class="status-badge current">CURRENT</div>
+                    </div>
+                    <div class="you-are-here"></div>
+                </div>
+
+                <div class="connector" id="connector-5-6">→</div>
+
+                <div class="step" data-step="6">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h3>Profit!</h3>
+                        <p>Success achieved</p>
+                    </div>
+                    <div class="step-status">
+                        <div class="status-badge pending">PENDING</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-controls">
+            <h2>Resource Management & Scaling</h2>
+            <div class="control-panel">
+                <button id="test-persistence" class="demo-btn">Test Persistence</button>
+                <button id="reload-demo" class="demo-btn">Reload Page</button>
+                <button id="view-api-status" class="demo-btn">View API Status</button>
+            </div>
+            <div class="control-panel">
+                <button id="start-load-test" class="demo-btn primary">Start Load Test</button>
+                <button id="stop-load-test" class="demo-btn secondary">Stop Load Test</button>
+                <button id="check-hpa" class="demo-btn">Check HPA Status</button>
+            </div>
+        </div>
+
+        <div class="info-panels">
+            <div class="info-panel">
+                <h3>📊 Resource Metrics</h3>
+                <div id="metrics-display">Loading resource metrics...</div>
+            </div>
+            <div class="info-panel">
+                <h3>🔥 Load Testing</h3>
+                <div id="load-test-status">Ready to generate load</div>
+            </div>
+            <div class="info-panel">
+                <h3>🏥 Health Checks</h3>
+                <div id="health-status">Checking probe status...</div>
+            </div>
+            <div class="info-panel">
+                <h3>📈 Auto-Scaling</h3>
+                <div id="hpa-status">Checking HPA configuration...</div>
+            </div>
+            <div class="info-panel">
+                <h3>💾 Database</h3>
+                <div id="persistence-status">Database ready</div>
+            </div>
+            <div class="info-panel">
+                <h3>ℹ️ App Status</h3>
+                <div id="app-status">Loading...</div>
+            </div>
+        </div>
+
+        <footer>
+            <p>OpenShift Demo Application | Version 3.0.0 Resource Management & Scaling</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
