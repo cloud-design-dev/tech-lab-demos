@@ -4,7 +4,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: checkin-app-secret
-  namespace: check-in-demo
+  namespace: tech-lab-demo
 type: Opaque
 data:
   # Base64 encoded values (change in production)
@@ -12,8 +12,8 @@ data:
   # IBM_CLOUD_ACCOUNT_ID: your-account-id-here (base64 encoded)
   # FLASK_SECRET_KEY: super-secret-flask-key-2024 -> c3VwZXItc2VjcmV0LWZsYXNrLWtleS0yMDI0
   # ADMIN_PASSWORD: demo-admin-2024 -> ZGVtby1hZG1pbi0yMDI0
-  IBM_CLOUD_API_KEY: ""  # TODO: Set this before deployment
-  IBM_CLOUD_ACCOUNT_ID: ""  # TODO: Set this before deployment  
+  IBM_CLOUD_API_KEY: ""
+  IBM_CLOUD_ACCOUNT_ID: "" 
   FLASK_SECRET_KEY: c3VwZXItc2VjcmV0LWZsYXNrLWtleS0yMDI0
   ADMIN_PASSWORD: ZGVtby1hZG1pbi0yMDI0
 ---
@@ -22,7 +22,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: github-webhook-secret
-  namespace: check-in-demo
+  namespace: tech-lab-demo
 type: Opaque
 data:
   # Base64 encoded webhook secret - change in production
@@ -34,7 +34,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: checkin-app-config
-  namespace: check-in-demo
+  namespace: tech-lab-demo
 data:
   POSTGRES_HOST: postgresql-service
   POSTGRES_PORT: "5432"
@@ -45,7 +45,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: checkin-app-service
-  namespace: check-in-demo
+  namespace: tech-lab-demo
   labels:
     app: checkin-app
 spec:
@@ -63,7 +63,7 @@ apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   name: checkin-app
-  namespace: check-in-demo
+  namespace: tech-lab-demo
   labels:
     app: checkin-app
 spec:
@@ -77,9 +77,8 @@ spec:
     type: Source
     sourceStrategy:
       from:
-        kind: ImageStreamTag
-        name: python:3.12-ubi8
-        namespace: openshift
+        kind: DockerImage  
+        name: registry.access.redhat.com/ubi8/python-39
       env:
       - name: UPGRADE_PIP_TO_LATEST
         value: "true"
@@ -99,7 +98,7 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   name: checkin-app
-  namespace: check-in-demo
+  namespace: tech-lab-demo
   labels:
     app: checkin-app
 spec:
@@ -111,7 +110,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: checkin-app
-  namespace: check-in-demo
+  namespace: tech-lab-demo
   labels:
     app: checkin-app
 spec:
@@ -143,7 +142,7 @@ spec:
     spec:
       containers:
       - name: checkin-app
-        image: image-registry.openshift-image-registry.svc:5000/check-in-demo/checkin-app:latest
+        image: image-registry.openshift-image-registry.svc:5000/tech-lab-demo/checkin-app:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -235,7 +234,7 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: checkin-app-route
-  namespace: check-in-demo
+  namespace: tech-lab-demo
   labels:
     app: checkin-app
 spec:

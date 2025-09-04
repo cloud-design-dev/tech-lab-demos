@@ -4,7 +4,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgresql-pvc
-  namespace: check-in-demo
+  namespace: tech-lab-demo
 spec:
   accessModes:
     - ReadWriteOnce
@@ -18,7 +18,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: postgresql-secret
-  namespace: check-in-demo
+  namespace: tech-lab-demo
 type: Opaque
 data:
   # Values should be base64 encoded
@@ -35,7 +35,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgresql-service
-  namespace: check-in-demo
+  namespace: tech-lab-demo
   labels:
     app: postgresql
 spec:
@@ -53,7 +53,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgresql
-  namespace: check-in-demo
+  namespace: tech-lab-demo
   labels:
     app: postgresql
 spec:
