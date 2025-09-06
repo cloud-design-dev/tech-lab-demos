@@ -31,6 +31,12 @@ spec:
   - type: ConfigChange
   - type: ImageChange
     imageChange: {}
+  - type: GitHub
+    github:
+      secret: github-webhook-secret # pragma: allowlist secret
+  - type: Generic
+    generic:
+      secret: generic-webhook-secret # pragma: allowlist secret
 
 ---
 apiVersion: image.openshift.io/v1
