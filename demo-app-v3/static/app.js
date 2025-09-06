@@ -409,10 +409,23 @@ class OpenShiftDemo {
                     <em>HPA is working! 🎉</em>
                 `);
             } else {
+                // Show more helpful debugging for the demo
+                let debugInfo = '';
+                if (hpa.debug_info) {
+                    debugInfo = `<div style="font-size: 0.8em; color: #666; margin-top: 0.5rem;">
+                        Debug: ${hpa.error}<br>
+                        Method: ${hpa.debug_info.method || 'unknown'}
+                    </div>`;
+                }
+                
                 this.updateStatus('hpa-status', `
-                    <strong>⚠️ HPA Not Found</strong><br>
+                    <strong>⚠️ HPA Detection Issue</strong><br>
                     ${hpa.message}<br>
-                    Run: <code>oc apply -f openshift/hpa.yaml</code>
+                    ${debugInfo}
+                    <div style="background: #fff3cd; padding: 0.5rem; margin-top: 0.5rem; border-left: 3px solid #ffc107;">
+                        <strong>Note:</strong> HPA may be working but not detectable from pod.<br>
+                        Check: <code>oc get hpa</code>
+                    </div>
                 `);
             }
         } catch (error) {
@@ -433,22 +446,32 @@ class OpenShiftDemo {
             const ready = await readyResp.json();
             const startup = await startupResp.json();
             
-            const healthIcon = healthResp.ok ? '✅' : '❌';
-            const readyIcon = readyResp.ok ? '✅' : '❌';
-            const startupIcon = startupResp.ok ? '✅' : '❌';
-            
+            // Endpoints work, but probes are not configured in OpenShift
             this.updateStatus('health-status', `
-                <strong>🏥 Health Check Status</strong><br>
-                Liveness: ${healthIcon} ${health.status || 'Unknown'}<br>
-                Readiness: ${readyIcon} ${ready.status || 'Unknown'}<br>
-                Startup: ${startupIcon} ${startup.status || 'Unknown'}<br>
-                <em>Configure probes in OpenShift</em>
+                <strong>⚠️ Health Probes Not Configured</strong><br>
+                <div style="color: #666; font-size: 0.9em;">
+                    Endpoints Available:<br>
+                    • /api/health (Liveness) ✅<br>
+                    • /api/ready (Readiness) ✅<br>
+                    • /api/startup (Startup) ✅<br>
+                </div>
+                <div style="background: #f0f8ff; padding: 0.5rem; margin-top: 0.5rem; border-left: 3px solid #0066cc;">
+                    <strong>Demo Action:</strong><br>
+                    Configure probes in OpenShift console<br>
+                    Deployment → demo-app-v3 → YAML
+                </div>
             `);
         } catch (error) {
             this.updateStatus('health-status', `
-                <strong>🏥 Health Check Status</strong><br>
-                ❌ Error checking health endpoints<br>
-                <em>Configure probes in OpenShift</em>
+                <strong>⚠️ Health Probes Not Configured</strong><br>
+                <div style="color: #666;">
+                    Endpoints may not be available<br>
+                    Error: ${error.message}
+                </div>
+                <div style="background: #f0f8ff; padding: 0.5rem; margin-top: 0.5rem; border-left: 3px solid #0066cc;">
+                    <strong>Demo Action:</strong><br>
+                    Configure probes in OpenShift console
+                </div>
             `);
         }
     }

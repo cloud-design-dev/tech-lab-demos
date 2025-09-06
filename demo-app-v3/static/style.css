@@ -448,6 +448,14 @@ header p {
     gap: 1rem;
     justify-content: center;
     flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding: 1rem 0;
+}
+
+.control-panel + .control-panel {
+    margin-top: 0.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px dashed #ccc;
 }
 
 .demo-btn {

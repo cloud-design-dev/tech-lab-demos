@@ -751,9 +751,49 @@ def get_load_status():
     
     return jsonify(status)
 
+def get_hpa_via_kubernetes_api():
+    """Fallback method to get HPA status via Kubernetes API"""
+    try:
+        # Read service account token
+        with open('/var/run/secrets/kubernetes.io/serviceaccount/token', 'r') as token_file:
+            token = token_file.read().strip()
+        
+        # Get namespace
+        with open('/var/run/secrets/kubernetes.io/serviceaccount/namespace', 'r') as namespace_file:
+            namespace = namespace_file.read().strip()
+        
+        # Kubernetes API endpoint
+        api_server = os.environ.get('KUBERNETES_SERVICE_HOST')
+        api_port = os.environ.get('KUBERNETES_SERVICE_PORT', '443')
+        
+        if not api_server:
+            return None
+        
+        # Make API request
+        url = f"https://{api_server}:{api_port}/apis/autoscaling/v2/namespaces/{namespace}/horizontalpodautoscalers/demo-app-v3"
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.get(url, headers=headers, verify='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', timeout=10)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Kubernetes API returned {response.status_code}: {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"Kubernetes API fallback failed: {e}")
+        return None
+
 @app.route('/api/hpa-status')
 def get_hpa_status():
     """Get HPA scaling information"""
+    hpa_data = None
+    method_used = "unknown"
+    
     try:
         # Try to get HPA status via oc command first
         result = subprocess.run(['oc', 'get', 'hpa', 'demo-app-v3', '-o', 'json'], 
@@ -761,7 +801,14 @@ def get_hpa_status():
         
         if result.returncode == 0:
             hpa_data = json.loads(result.stdout)
-            
+            method_used = "oc_command"
+        else:
+            # Fallback to Kubernetes API
+            hpa_data = get_hpa_via_kubernetes_api()
+            if hpa_data:
+                method_used = "kubernetes_api"
+        
+        if hpa_data:
             # Extract useful HPA information
             status = hpa_data.get('status', {})
             spec = hpa_data.get('spec', {})
@@ -804,9 +851,10 @@ def get_hpa_status():
                 "target_memory_percent": memory_target,
                 "conditions": status.get('conditions', []),
                 "last_scale_time": status.get('lastScaleTime'),
+                "method_used": method_used,
                 "debug_info": {
-                    "raw_status": status,
-                    "raw_spec": spec
+                    "method": method_used,
+                    "namespace": detect_environment()
                 }
             })
         else:
