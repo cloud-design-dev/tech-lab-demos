@@ -10,7 +10,6 @@ class OpenShiftDemo {
         this.loadPersistenceStatus();  // Load DB stats on page load
         this.loadMetrics();  // Load metrics on page load
         this.loadHealthStatus();  // Load health check status
-        this.loadHPAStatus();  // Load HPA status
         this.startStatusUpdates();
     }
 
@@ -20,7 +19,6 @@ class OpenShiftDemo {
         document.getElementById('view-api-status').addEventListener('click', () => this.viewApiStatus());
         document.getElementById('start-load-test').addEventListener('click', () => this.startLoadTest());
         document.getElementById('stop-load-test').addEventListener('click', () => this.stopLoadTest());
-        document.getElementById('check-hpa').addEventListener('click', () => this.checkHPA());
     }
 
     async loadStatus() {
@@ -384,55 +382,6 @@ class OpenShiftDemo {
         setTimeout(monitor, 1000); // Start monitoring after 1 second
     }
     
-    async checkHPA() {
-        try {
-            this.updateStatus('hpa-status', '🔍 Checking HPA status...');
-            
-            const response = await fetch('/api/hpa-status');
-            const hpa = await response.json();
-            
-            if (hpa.hpa_found) {
-                let metrics_display = '';
-                if (hpa.current_cpu_percent !== null && hpa.target_cpu_percent !== null) {
-                    metrics_display += `CPU: ${hpa.current_cpu_percent}% / ${hpa.target_cpu_percent}%<br>`;
-                }
-                if (hpa.current_memory_percent !== null && hpa.target_memory_percent !== null) {
-                    metrics_display += `Memory: ${hpa.current_memory_percent}% / ${hpa.target_memory_percent}%<br>`;
-                }
-                
-                this.updateStatus('hpa-status', `
-                    <strong>✅ HPA Active & Scaling</strong><br>
-                    Current Pods: ${hpa.current_replicas} / Desired: ${hpa.desired_replicas}<br>
-                    Range: ${hpa.min_replicas}-${hpa.max_replicas} pods<br>
-                    ${metrics_display}
-                    ${hpa.last_scale_time ? `Last Scale: ${new Date(hpa.last_scale_time).toLocaleTimeString()}` : ''}<br>
-                    <em>HPA is working! 🎉</em>
-                `);
-            } else {
-                // Show more helpful debugging for the demo
-                let debugInfo = '';
-                if (hpa.debug_info) {
-                    debugInfo = `<div style="font-size: 0.8em; color: #666; margin-top: 0.5rem;">
-                        Debug: ${hpa.error}<br>
-                        Method: ${hpa.debug_info.method || 'unknown'}
-                    </div>`;
-                }
-                
-                this.updateStatus('hpa-status', `
-                    <strong>⚠️ HPA Detection Issue</strong><br>
-                    ${hpa.message}<br>
-                    ${debugInfo}
-                    <div style="background: #fff3cd; padding: 0.5rem; margin-top: 0.5rem; border-left: 3px solid #ffc107;">
-                        <strong>Note:</strong> HPA may be working but not detectable from pod.<br>
-                        Check: <code>oc get hpa</code>
-                    </div>
-                `);
-            }
-        } catch (error) {
-            this.updateStatus('hpa-status', `❌ Error: ${error.message}`);
-        }
-    }
-    
     async loadHealthStatus() {
         try {
             // Check all health endpoints
@@ -472,41 +421,6 @@ class OpenShiftDemo {
                     <strong>Demo Action:</strong><br>
                     Configure probes in OpenShift console
                 </div>
-            `);
-        }
-    }
-    
-    async loadHPAStatus() {
-        try {
-            const response = await fetch('/api/hpa-status');
-            const hpa = await response.json();
-            
-            if (hpa.hpa_found) {
-                let status_color = hpa.current_replicas > hpa.min_replicas ? '🟢' : '🔵';
-                let metrics_summary = '';
-                if (hpa.current_cpu_percent && hpa.current_memory_percent) {
-                    metrics_summary = `CPU: ${hpa.current_cpu_percent}%, Mem: ${hpa.current_memory_percent}%<br>`;
-                }
-                
-                this.updateStatus('hpa-status', `
-                    <strong>${status_color} Auto-Scaling Active</strong><br>
-                    Pods: ${hpa.current_replicas}/${hpa.min_replicas}-${hpa.max_replicas}<br>
-                    ${metrics_summary}
-                    <button onclick="openShiftDemo.checkHPA()" class="btn-small">Refresh HPA</button>
-                `);
-            } else {
-                this.updateStatus('hpa-status', `
-                    <strong>📊 Auto-Scaling</strong><br>
-                    ⚠️ HPA not configured<br>
-                    Deploy: <code>oc apply -f openshift/hpa.yaml</code><br>
-                    <button onclick="openShiftDemo.checkHPA()" class="btn-small">Check HPA</button>
-                `);
-            }
-        } catch (error) {
-            this.updateStatus('hpa-status', `
-                <strong>📊 Auto-Scaling</strong><br>
-                ❌ Error checking HPA<br>
-                <button onclick="openShiftDemo.checkHPA()" class="btn-small">Check HPA</button>
             `);
         }
     }
@@ -607,7 +521,6 @@ class OpenShiftDemo {
             this.loadStatus();
             this.loadMetrics();  // Also refresh metrics
             this.loadHealthStatus(); // Refresh health status
-            this.loadHPAStatus(); // Refresh HPA status
         }, 30000);
     }
 }
