@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo-app-v3
+  name: demo-app-v4
   labels:
-    app: demo-app-v3
-    version: v3
+    app: demo-app-v4
+    version: v4
   annotations:
-    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"demo-app-v3:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"demo-app-v3\")].image"}]'
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"demo-app-v4:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"demo-app-v4\")].image"}]'
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: demo-app-v3
+      app: demo-app-v4
   template:
     metadata:
       labels:
-        app: demo-app-v3
-        version: v3
+        app: demo-app-v4
+        version: v4
     spec:
       containers:
-      - name: demo-app-v3
-        image: demo-app-v3:latest
+      - name: demo-app-v4
+        image: demo-app-v4:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080

@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: demo-app-v4
+  labels:
+    app: demo-app-v4
+    version: v4
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: demo-app-v4
+    weight: 100
+  wildcardPolicy: None

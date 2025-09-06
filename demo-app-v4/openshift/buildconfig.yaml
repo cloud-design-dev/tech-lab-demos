@@ -1,0 +1,48 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: demo-app-v4
+  labels:
+    app: demo-app-v4
+    version: v4
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: demo-app-v4:latest
+  source:
+    type: Git
+    git:
+      uri: https://github.com/cloud-design-dev/tech-lab-demos.git  # Replace with actual repo URL
+    contextDir: demo-app-v4
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        namespace: openshift
+        name: python:3.9-ubi8
+      env:
+      - name: PIP_INDEX_URL
+        value: https://pypi.org/simple/
+      - name: UPGRADE_PIP_TO_LATEST
+        value: "true"
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+    imageChange: {}
+  - type: GitHub
+    github:
+      secret: github-webhook-secret # pragma: allowlist secret
+  - type: Generic
+    generic:
+      secret: generic-webhook-secret # pragma: allowlist secret
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: demo-app-v4
+  labels:
+    app: demo-app-v4
+    version: v4

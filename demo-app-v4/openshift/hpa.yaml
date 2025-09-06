@@ -1,15 +1,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: demo-app-v3
+  name: demo-app-v4
   labels:
-    app: demo-app-v3
+    app: demo-app-v4
     version: v3
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: demo-app-v3
+    name: demo-app-v4
   minReplicas: 2
   maxReplicas: 8
   metrics:
