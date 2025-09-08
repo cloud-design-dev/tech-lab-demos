@@ -1,295 +1,365 @@
-# Demo App V3: Resource Management & Auto-Scaling
+# Demo App V3: OpenShift CLI & Resource Management
 
-Version 3 of the OpenShift demo application focuses on **resource management**, **health monitoring**, and **horizontal pod autoscaling**. This application demonstrates production-ready container orchestration with proper resource limits, health checks, and automatic scaling based on CPU/memory utilization.
+This version of the demo application focuses on **command-line deployment** using the `oc` CLI tool and demonstrates **resource management** and **horizontal pod autoscaling** concepts in OpenShift.
 
-## Architecture Overview
+## Overview
 
-**Demo App V3** builds upon V1 (ephemeral) and V2 (persistent) by adding:
-- **Resource Limits**: CPU and memory constraints with configurable limits
-- **Health Checks**: Comprehensive liveness and readiness probes
-- **Horizontal Pod Autoscaling (HPA)**: Automatic scaling based on resource utilization
-- **Load Testing**: Built-in traffic generation for scaling demonstrations
-- **Resource Monitoring**: Real-time CPU/memory usage vs limits visualization
+Demo App V3 builds upon the persistence features of V2 and adds:
+- **Aggressive resource limits** for faster scaling demonstrations
+- **Built-in load testing** to trigger HPA scaling
+- **Real-time resource monitoring** with CPU/memory vs limits
+- **CLI-focused deployment** using `oc` commands
 
-## Key Features
+## Prerequisites
 
-### Resource Management
-- **CPU Requests/Limits**: Configurable CPU allocation and maximum usage
-- **Memory Requests/Limits**: Memory allocation with container boundaries
-- **Resource Monitoring**: Real-time utilization vs limits display
-- **Constraint Enforcement**: Demonstration of throttling and OOM scenarios
-
-### Health & Monitoring
-- **Liveness Probes**: Container restart automation on failure
-- **Readiness Probes**: Traffic routing based on application readiness
-- **Startup Probes**: Graceful application initialization handling
-- **Metrics Endpoints**: Prometheus-compatible resource metrics
-
-### Auto-Scaling
-- **Horizontal Pod Autoscaler**: CPU and memory-based scaling triggers
-- **Traffic Generation**: Built-in load testing for scaling demonstrations
-- **Scale Events**: Visual feedback on pod creation/termination
-- **Performance Metrics**: Request rate and response time tracking
-
-## Deployment Guide
-
-### Prerequisites
-- OpenShift cluster with metrics server enabled
-- `oc` CLI configured and authenticated
-- Cluster admin privileges for HPA configuration
-
-### Quick Deployment
+Before deploying, ensure you have:
 
 ```bash
-# Clone and navigate to V3
-git clone <repository>
-cd tech-lab-demos/demo-app-v3
+# Verify OpenShift CLI access
+oc whoami
+oc project
 
-# Deploy with resource limits and HPA
-oc apply -f openshift/
+# Check cluster access
+oc get nodes
 
-# Verify deployment
-oc get deployment,hpa,pod -l app=demo-app-v3
+# Verify you're in the correct project/namespace
+oc project demo-lab-apps  # or your target namespace
 ```
 
-### Step-by-Step Deployment
+## Step-by-Step Deployment
 
-#### 1. Create Application Deployment
+### 1. Deploy PostgreSQL Database (if not already deployed)
+
 ```bash
-# Deploy application with resource limits
+# Deploy PostgreSQL with persistent storage
+oc apply -f openshift/postgresql.yaml
+
+# Verify PostgreSQL deployment
+oc get pods -l app=postgresql
+oc get pvc postgresql-storage
+
+# Check PostgreSQL is ready
+oc logs deployment/postgresql
+```
+
+### 2. Build and Deploy the Application
+
+```bash
+# Create the build configuration and image stream
+oc apply -f openshift/buildconfig.yaml
+
+# Start the initial build from source
+oc start-build demo-app-v3 --follow
+
+# Verify the build completed
+oc get builds
+oc get imagestream demo-app-v3
+```
+
+### 3. Deploy the Application
+
+```bash
+# Deploy the application with resource limits
 oc apply -f openshift/deployment.yaml
 
-# Verify resource limits are applied
-oc describe deployment demo-app-v3 | grep -A 10 'Limits:'
-```
-
-#### 2. Configure Health Checks
-```bash
-# Health checks are included in deployment.yaml
-# Verify probe configuration
-oc describe pod -l app=demo-app-v3 | grep -A 5 'Liveness:'
-oc describe pod -l app=demo-app-v3 | grep -A 5 'Readiness:'
-```
-
-#### 3. Create Service and Route
-```bash
-# Deploy service and external route
+# Create the service
 oc apply -f openshift/service.yaml
+
+# Create the external route
 oc apply -f openshift/route.yaml
 
-# Get application URL
-oc get route demo-app-v3 -o jsonpath='{.spec.host}'
+# Verify deployment
+oc get deployment demo-app-v3
+oc get pods -l app=demo-app-v3
 ```
 
-#### 4. Configure Horizontal Pod Autoscaler
+### 4. Configure Horizontal Pod Autoscaler
+
 ```bash
-# Deploy HPA with CPU/memory targets
+# Deploy HPA for automatic scaling
 oc apply -f openshift/hpa.yaml
 
 # Verify HPA configuration
+oc get hpa demo-app-v3
 oc describe hpa demo-app-v3
+
+# Check current resource utilization
+oc adm top pods -l app=demo-app-v3
 ```
 
-## Resource Configuration
+### 5. Access the Application
 
-### CPU & Memory Limits
+```bash
+# Get the application URL
+oc get route demo-app-v3 -o jsonpath='{.spec.host}'
 
-The application uses the following resource configuration:
+# Or use this one-liner to open in browser
+open "https://$(oc get route demo-app-v3 -o jsonpath='{.spec.host}')"
+```
 
+## Key OpenShift/Kubernetes Concepts
+
+### Resource Management
+
+This demo showcases several resource management concepts:
+
+#### Resource Requests & Limits
 ```yaml
 resources:
-  requests:
-    cpu: 100m      # 0.1 CPU cores minimum
-    memory: 128Mi  # 128MB minimum memory
   limits:
-    cpu: 500m      # 0.5 CPU cores maximum
-    memory: 256Mi  # 256MB maximum memory
+    cpu: 200m        # Maximum CPU (0.2 cores)
+    memory: 128Mi    # Maximum memory
+  requests:
+    cpu: 50m         # Guaranteed CPU (0.05 cores)
+    memory: 64Mi     # Guaranteed memory
 ```
 
-### Health Check Configuration
+**Key Concepts:**
+- **Requests**: Guaranteed resources for scheduling
+- **Limits**: Maximum resources before throttling/termination
+- **CPU**: Measured in millicores (1000m = 1 core)
+- **Memory**: Measured in bytes (Mi = Mebibytes)
 
-#### Liveness Probe
-```yaml
-livenessProbe:
-  httpGet:
-    path: /api/health
-    port: 5000
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
+#### Horizontal Pod Autoscaler (HPA)
+
+```bash
+# View HPA status
+oc get hpa demo-app-v3
+
+# Expected output:
+NAME          REFERENCE                TARGETS                        MINPODS   MAXPODS   REPLICAS   AGE
+demo-app-v3   Deployment/demo-app-v3   cpu: 15%/50%, memory: 45%/60%   2         8         4          10m
 ```
 
-#### Readiness Probe  
-```yaml
-readinessProbe:
-  httpGet:
-    path: /api/ready
-    port: 5000
-  initialDelaySeconds: 5
-  periodSeconds: 5
-  timeoutSeconds: 3
-  failureThreshold: 2
-```
-
-#### Startup Probe
-```yaml
-startupProbe:
-  httpGet:
-    path: /api/startup
-    port: 5000
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  failureThreshold: 10
-```
-
-## Horizontal Pod Autoscaling
-
-### HPA Configuration
-
-```yaml
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: demo-app-v3-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: demo-app-v3
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
-```
-
-### Scaling Triggers
-- **CPU Utilization**: Scales when average CPU > 70%
-- **Memory Utilization**: Scales when average memory > 80%
+**HPA Configuration:**
+- **CPU Target**: 50% average utilization
+- **Memory Target**: 60% average utilization  
 - **Min Replicas**: 2 (high availability)
-- **Max Replicas**: 10 (resource protection)
+- **Max Replicas**: 8 (cost control)
+- **Scale Up**: Aggressive (30s window, up to 4 pods at once)
+- **Scale Down**: Conservative (180s stabilization)
 
-## Load Testing & Scaling Demo
+### Container Image Management
 
-### Generate Load for Scaling
+#### Source-to-Image (S2I) Build Process
+
 ```bash
-# Start load testing from application UI
-curl -X POST http://<app-url>/api/load-test \
-  -H "Content-Type: application/json" \
-  -d '{"duration": 300, "rps": 50, "cpu_intensive": true}'
+# View build configuration
+oc describe buildconfig demo-app-v3
 
-# Monitor HPA scaling decisions
-watch oc get hpa demo-app-v3
+# Manual build trigger
+oc start-build demo-app-v3
 
-# Watch pod scaling events
-oc get events --field-selector type=Normal --sort-by='.firstTimestamp'
+# Follow build logs
+oc logs -f buildconfig/demo-app-v3
 ```
 
-### Monitor Resource Utilization
+**S2I Process:**
+1. **Git Source**: Pulls code from GitHub repository
+2. **Builder Image**: Uses Python 3.9 UBI base image
+3. **Build Process**: Installs dependencies, copies code
+4. **Output Image**: Creates application image in ImageStream
+5. **Auto Deployment**: Triggers rollout when image updates
+
+#### ImageStream Integration
+
 ```bash
-# View real-time pod resources
-oc adm top pod -l app=demo-app-v3
+# View ImageStream
+oc get imagestream demo-app-v3
 
-# Check HPA status and metrics
-oc describe hpa demo-app-v3
+# Check image history
+oc describe imagestream demo-app-v3
 
-# Monitor scaling events
-oc get events --field-selector reason=SuccessfulRescale
+# Tag specific image versions
+oc tag demo-app-v3:latest demo-app-v3:stable
 ```
 
-## API Endpoints
+**ImageStream Benefits:**
+- **Local Registry**: Images stored in OpenShift registry
+- **Automatic Updates**: Deployments update when images change
+- **Image Security**: Built-in vulnerability scanning
+- **Rollback Support**: Previous image versions retained
 
-### Health & Status
-- `GET /api/health` - Liveness probe endpoint
-- `GET /api/ready` - Readiness probe endpoint  
-- `GET /api/startup` - Startup probe endpoint
-- `GET /api/metrics` - Prometheus metrics
+### Networking & Services
 
-### Resource Monitoring
-- `GET /api/resources` - Current CPU/memory usage vs limits
-- `GET /api/pod-info` - Pod metadata and resource specifications
-- `GET /api/scaling-events` - Recent HPA scaling activities
+#### Service Configuration
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-app-v3
+spec:
+  selector:
+    app: demo-app-v3
+  ports:
+  - port: 8080
+    targetPort: 8080
+```
 
-### Load Generation
-- `POST /api/load-test` - Generate CPU/memory load for scaling
-- `GET /api/load-status` - Current load testing status
-- `DELETE /api/load-test` - Stop active load testing
+#### Route Configuration
+```yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: demo-app-v3
+spec:
+  tls:
+    termination: edge    # SSL termination at route level
+  to:
+    kind: Service
+    name: demo-app-v3
+```
+
+**Networking Concepts:**
+- **Service**: Internal load balancer for pods
+- **Route**: External HTTPS access with SSL termination
+- **Selectors**: Label-based pod targeting
+- **Load Balancing**: Automatic traffic distribution
 
 ## Demonstration Scenarios
 
-### 1. Resource Limit Enforcement
-```bash
-# Generate high CPU load
-curl -X POST http://<app-url>/api/load-test \
-  -d '{"cpu_intensive": true, "duration": 120}'
+### 1. Resource Limit Testing
 
-# Observe CPU throttling at 500m limit
-oc adm top pod -l app=demo-app-v3
+```bash
+# Start load test via application UI or API
+curl -X POST "https://$(oc get route demo-app-v3 -o jsonpath='{.spec.host}')/api/load-test" \
+  -H "Content-Type: application/json" \
+  -d '{"duration": 120, "cpu_intensive": true}'
+
+# Monitor resource utilization
+watch oc adm top pods -l app=demo-app-v3
+
+# Expected: CPU usage should hit ~100% quickly due to low limits
 ```
 
-### 2. Health Check Automation
-```bash
-# Simulate application failure
-curl -X POST http://<app-url>/api/simulate-failure
+### 2. HPA Scaling Demonstration
 
-# Watch pod restart via liveness probe
-oc get pod -l app=demo-app-v3 -w
+```bash
+# Monitor HPA in real-time
+watch oc get hpa demo-app-v3
+
+# Watch pod scaling
+watch oc get pods -l app=demo-app-v3
+
+# View scaling events
+oc get events --field-selector reason=SuccessfulRescale --sort-by='.firstTimestamp'
 ```
 
-### 3. Auto-Scaling Demonstration
+**Expected Timeline:**
+- **0-30s**: Load test starts, CPU spikes to 100%+
+- **30-60s**: HPA detects high utilization, scales to 4 pods
+- **60-90s**: Further scaling if load continues
+- **2-3min after load stops**: Gradual scale down begins
+
+### 3. Application Updates
+
 ```bash
-# Start sustained load
-curl -X POST http://<app-url>/api/load-test \
-  -d '{"duration": 600, "rps": 100, "cpu_intensive": true}'
+# Update application code and rebuild
+git commit -am "Update application"
+git push origin main
 
-# Monitor HPA scaling up
-watch oc get hpa,pod -l app=demo-app-v3
+# Manual rebuild and deploy
+oc start-build demo-app-v3 --follow
+oc rollout restart deployment/demo-app-v3
 
-# Stop load and watch scale down
-curl -X DELETE http://<app-url>/api/load-test
+# Monitor rollout
+oc rollout status deployment/demo-app-v3
+
+# Verify all pods updated
+oc get pods -l app=demo-app-v3 -o wide
 ```
 
 ## Troubleshooting
 
-### HPA Not Scaling
+### Common Issues
+
+#### Build Failures
 ```bash
-# Check metrics server
+# Check build logs
+oc logs -f buildconfig/demo-app-v3
+
+# Common solutions:
+oc delete build --all -l buildconfig=demo-app-v3
+oc start-build demo-app-v3
+```
+
+#### Pod Startup Issues
+```bash
+# Check pod status
+oc describe pods -l app=demo-app-v3
+
+# View application logs
+oc logs -f deployment/demo-app-v3
+
+# Common issues:
+# - Database connection failures
+# - Resource limit exceeded
+# - Image pull errors
+```
+
+#### HPA Not Scaling
+```bash
+# Verify metrics server
 oc get apiservice v1beta1.metrics.k8s.io
 
+# Check HPA conditions
+oc describe hpa demo-app-v3 | grep -A 10 "Conditions:"
+
 # Verify resource metrics
-oc adm top pod -l app=demo-app-v3
-
-# Check HPA events
-oc describe hpa demo-app-v3 | grep Events -A 10
+oc adm top pods -l app=demo-app-v3
 ```
 
-### Pod Not Starting
+#### Database Connection Issues
 ```bash
-# Check startup probe
-oc describe pod -l app=demo-app-v3 | grep -A 5 'Startup:'
+# Check PostgreSQL status
+oc get pods -l app=postgresql
+oc logs deployment/postgresql
 
-# View pod events
-oc describe pod -l app=demo-app-v3 | grep Events -A 10
+# Verify secrets
+oc get secret postgresql-secret
+oc describe secret postgresql-secret
+
+# Test database connectivity
+oc rsh deployment/demo-app-v3
+# Inside pod: curl localhost:8080/api/persistence/stats
 ```
 
-### Resource Constraints
-```bash
-# Check actual vs requested resources
-oc describe pod -l app=demo-app-v3 | grep -A 10 'Requests:'
+## Advanced Operations
 
-# Monitor resource usage
-oc adm top pod -l app=demo-app-v3 --containers
+### Manual Scaling
+```bash
+# Scale to specific replica count
+oc scale deployment demo-app-v3 --replicas=5
+
+# Disable HPA temporarily
+oc delete hpa demo-app-v3
+
+# Re-enable HPA
+oc apply -f openshift/hpa.yaml
+```
+
+### Resource Monitoring
+```bash
+# Real-time pod resources
+oc adm top pods -l app=demo-app-v3 --containers
+
+# Node resource utilization
+oc adm top nodes
+
+# Detailed resource usage
+oc describe deployment demo-app-v3 | grep -A 10 "Limits:"
+```
+
+### Blue/Green Deployment
+```bash
+# Tag current version as stable
+oc tag demo-app-v3:latest demo-app-v3:stable
+
+# Deploy new version alongside current
+oc new-app demo-app-v3:latest --name=demo-app-v3-new
+
+# Switch traffic after validation
+oc patch route demo-app-v3 -p '{"spec":{"to":{"name":"demo-app-v3-new"}}}'
 ```
 
 ## Cleanup
@@ -298,10 +368,23 @@ oc adm top pod -l app=demo-app-v3 --containers
 # Remove all V3 resources
 oc delete -f openshift/
 
-# Verify cleanup
-oc get deployment,service,route,hpa -l app=demo-app-v3
+# Or remove individually
+oc delete deployment,service,route,hpa,buildconfig,imagestream -l app=demo-app-v3
+
+# Keep PostgreSQL for other demo versions
+# oc delete -f openshift/postgresql.yaml  # Only if needed
 ```
 
----
+## Key Learning Outcomes
 
-**Demo App V3** provides a complete platform for demonstrating enterprise container orchestration concepts including resource management, health monitoring, and automatic scaling in OpenShift environments.
+After completing this demo, users will understand:
+
+1. **OpenShift CLI Operations**: Build, deploy, scale, and manage applications
+2. **Resource Management**: CPU/memory requests, limits, and utilization
+3. **Auto-scaling**: HPA configuration and scaling behavior
+4. **Container Builds**: S2I process and ImageStream management
+5. **Networking**: Services, routes, and load balancing
+6. **Monitoring**: Resource utilization and application metrics
+7. **Troubleshooting**: Common issues and debugging techniques
+
+This demo provides hands-on experience with production OpenShift concepts while maintaining educational simplicity.
