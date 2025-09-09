@@ -110,7 +110,7 @@ run = [
 # MkDocs Documentation Site
 [tasks.docs-install]
 description = "Install MkDocs and required plugins"
-run = "pip install mkdocs-material mkdocs-git-revision-date-localized-plugin"
+run = "pip install mkdocs-material"
 
 [tasks.docs-dev]
 description = "Serve documentation site locally with live reload"

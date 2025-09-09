@@ -3,8 +3,14 @@
 
 FROM python:3.12-slim
 
+# Install system dependencies including git
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install MkDocs and build dependencies
-RUN pip install --no-cache-dir mkdocs-material mkdocs-git-revision-date-localized-plugin
+RUN pip install --no-cache-dir mkdocs-material
 
 # Set work directory
 WORKDIR /app
