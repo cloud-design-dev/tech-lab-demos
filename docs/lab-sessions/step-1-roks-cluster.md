@@ -49,8 +49,6 @@ Click the **"Create Cluster"** button to begin the setup process.
 #### Infrastructure Type
 - **Infrastructure:** Select **VPC**
 
-This ensures your cluster is deployed in a Virtual Private Cloud for better security and network isolation.
-
 ### 4. Network Configuration
 
 #### Virtual Private Cloud
@@ -58,20 +56,20 @@ This ensures your cluster is deployed in a Virtual Private Cloud for better secu
 
 | Group Letters | VPC to Select |
 |---------------|---------------|
-| A - E | VPC 1 |
-| F - J | VPC 2 |
-| K - O | VPC 3 |
-| P - T | VPC 4 |
-| U - Y | VPC 5 |
+| A - E | VPC 1 | tech-labs-vpc-1 | 
+| F - J | VPC 2 | tech-labs-vpc-2 | 
+| K - O | VPC 3 | tech-labs-vpc-3 | 
+| P - T | VPC 4 | tech-labs-vpc-4 | 
+| U - Y | VPC 5 | tech-labs-vpc-5 | 
 
 #### Location and Subnets
-- **Location:** Use the pre-selected region (typically Dallas)
+- **Location:** Use the pre-selected region (ca-tor for our lab)
 - **Subnets:** Select the subnet for each zone that ends with your group letter
 
 **Example for Group A:**
-- Zone 1: Select `lab-subnet-1-z1-ga`
-- Zone 2: Select `lab-subnet-1-z2-ga`
-- Zone 3: Select `lab-subnet-1-z3-ga`
+- Zone 1: Select `subnet-zone-1-group-a`
+- Zone 2: Select `subnet-zone-2-group-a`
+- Zone 3: Select `subnet-zone-3-group-a`
 
 !!! warning "Important"
     Make sure to select subnets that end with **your specific group letter**. Using incorrect subnets may cause networking conflicts.

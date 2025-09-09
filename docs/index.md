@@ -80,10 +80,10 @@ Before starting the lab, ensure you have:
 - ✅ IBM Cloud account with appropriate permissions
 - ✅ Group assignment and VPC resources (provided during lab setup)
 - ✅ Basic familiarity with containers and Kubernetes concepts
-- ✅ OpenShift CLI (`oc`) installed (optional but recommended)
+- ✅ OpenShift CLI (`oc`) installed (optional if you want to run commands locally vs Cloud Shell) 
 
-!!! tip "New to OpenShift?"
-    Don't worry if you're new to OpenShift! This lab is designed to be beginner-friendly while still covering advanced topics. Each step includes detailed explanations and screenshots.
+!!! tip "Don't have the ibmcloud cli, kubectl or oc installed? "
+    Don't worry you can use [Cloud Shell](https://cloud.ibm.com/shell) which includes all the tools you need for the lab
 
 ## 🎓 Learning Outcomes
 
