@@ -220,6 +220,7 @@ metadata:
   labels:
     app: checkin-app
 spec:
+  host: register.dts-lab.fun
   to:
     kind: Service
     name: checkin-app-service

@@ -107,13 +107,51 @@ run = [
     "python -c 'from app import get_database_url, validate_user_with_ibm_cloud; print(\"✓ Configuration test passed\")'"
 ]
 
+# MkDocs Documentation Site
+[tasks.docs-install]
+description = "Install MkDocs and required plugins"
+run = "pip install mkdocs-material mkdocs-git-revision-date-localized-plugin"
+
+[tasks.docs-dev]
+description = "Serve documentation site locally with live reload"
+run = "mkdocs serve --dev-addr=127.0.0.1:8001"
+
+[tasks.docs-build]
+description = "Build static documentation site"
+run = "mkdocs build"
+
+[tasks.docs-deploy]
+description = "Deploy documentation to GitHub Pages"
+run = "mkdocs gh-deploy --force"
+
+[tasks.docs-clean]
+description = "Clean documentation build artifacts"
+run = "rm -rf site/"
+
+[tasks.docs-docker-build]
+description = "Build MkDocs Docker image locally"
+run = "docker build -f docs-site/Dockerfile -t mkdocs-site ."
+
+[tasks.docs-docker-run]
+description = "Run MkDocs Docker container locally"
+run = "docker run -p 8080:8080 --name mkdocs-site mkdocs-site"
+
+[tasks.docs-docker-stop]
+description = "Stop MkDocs Docker container"
+run = "docker stop mkdocs-site && docker rm mkdocs-site"
+
+[tasks.docs-deploy-openshift]
+description = "Deploy MkDocs site to OpenShift with custom domain"
+run = "cd docs-site/openshift && ./deploy.sh"
+
 # Development Utilities
 [tasks.install-all]
-description = "Install dependencies for all apps"
+description = "Install dependencies for all apps and documentation"
 run = [
     "mise run v1-install",
     "mise run v2-install", 
-    "mise run checkin-install"
+    "mise run checkin-install",
+    "mise run docs-install"
 ]
 
 [tasks.clean-docker]

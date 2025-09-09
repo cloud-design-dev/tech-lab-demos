@@ -1,0 +1,131 @@
+site_name: OpenShift Demo Lab
+site_description: Comprehensive OpenShift and container orchestration technical lab
+site_author: DTS Labs
+site_url: https://guide.dts-lab.fun
+
+# Repository
+repo_name: tech-lab-demos
+repo_url: https://github.com/cloud-design-dev/tech-lab-demos
+edit_uri: edit/main/docs/
+
+# Theme configuration
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+# Plugins
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: cloud-design-dev
+      repo: tech-lab-demos
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Navigation
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Overview: getting-started/overview.md
+    - Prerequisites: getting-started/prerequisites.md
+    - Registration: getting-started/registration.md
+  - Lab Sessions:
+    - Session Overview: lab-sessions/overview.md
+    - Step 1 - Deploy ROKS Cluster: lab-sessions/step-1-roks-cluster.md
+    - Step 2 - OpenShift Console Tour: lab-sessions/step-2-console-tour.md
+    - Step 3 - Deploy Demo App V1: lab-sessions/step-3-demo-app-v1.md
+    - Step 4 - Add Persistence (V2): lab-sessions/step-4-demo-app-v2.md
+    - Step 5 - Resource Management (V3): lab-sessions/step-5-demo-app-v3.md
+    - Step 6 - Health Probes (V4): lab-sessions/step-6-demo-app-v4.md
+  - Demo Applications:
+    - Architecture Overview: demo-apps/architecture.md
+    - V1 - Ephemeral Storage: demo-apps/v1-ephemeral.md
+    - V2 - Persistent Storage: demo-apps/v2-persistent.md
+    - V3 - Resource Management: demo-apps/v3-resources.md
+    - V4 - Health Probes: demo-apps/v4-health-probes.md
+    - Check-in App: demo-apps/checkin-app.md
+  - Deployment Guides:
+    - OpenShift Deployment: deployment/openshift.md
+    - Local Development: deployment/local-development.md
+    - CI/CD Integration: deployment/cicd.md
+  - Reference:
+    - OpenShift Commands: reference/openshift-commands.md
+    - Troubleshooting: reference/troubleshooting.md
+    - API Documentation: reference/api-docs.md
+    - Resource Specifications: reference/resources.md
+
+# Extra
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/cloud-design-dev/tech-lab-demos
+  version:
+    provider: mike

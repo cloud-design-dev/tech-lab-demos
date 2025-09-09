@@ -594,6 +594,94 @@ def migrate_groups_to_letters():
             "error": f"Migration failed: {str(e)}"
         }), 500
 
+@app.route('/api/admin/reset-data', methods=['POST'])
+def reset_all_data():
+    """Reset all users and groups - use before demo session"""
+    if not is_admin_authenticated():
+        return jsonify({"error": "Authentication required"}), 401
+    
+    try:
+        # Count existing data
+        user_count = User.query.count()
+        group_count = Group.query.count()
+        
+        # Delete all users and groups
+        User.query.delete()
+        Group.query.delete()
+        
+        # Commit changes
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "All registration data has been reset",
+            "users_removed": user_count,
+            "groups_removed": group_count
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": f"Reset failed: {str(e)}"
+        }), 500
+
+@app.route('/api/admin/remove-user', methods=['POST'])
+def remove_specific_user():
+    """Remove a specific user by email"""
+    if not is_admin_authenticated():
+        return jsonify({"error": "Authentication required"}), 401
+    
+    try:
+        data = request.json or {}
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+        
+        # Find the user
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        # Get group info before deletion
+        group_name = user.group_name
+        
+        # Remove the user
+        db.session.delete(user)
+        
+        # Check if group is now empty and remove it
+        if group_name:
+            group = Group.query.filter_by(name=group_name).first()
+            if group:
+                remaining_users = User.query.filter_by(group_name=group_name).count()
+                if remaining_users == 0:
+                    # Group is empty, remove it
+                    db.session.delete(group)
+                    group_removed = True
+                else:
+                    # Update group member count
+                    group.current_members = remaining_users
+                    group.is_full = False  # Group is no longer full
+                    group_removed = False
+        
+        # Commit changes
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"User {email} has been removed",
+            "group_name": group_name,
+            "group_removed": group_removed if group_name else False
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": f"User removal failed: {str(e)}"
+        }), 500
+
 @app.route('/api/ibm-cloud-users')
 def get_ibm_cloud_users():
     """Get all IBM Cloud account users for admin view"""

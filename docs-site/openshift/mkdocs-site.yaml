@@ -1,0 +1,166 @@
+---
+# MkDocs Documentation Site BuildConfig
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: mkdocs-site
+  namespace: tech-lab-demo
+  labels:
+    app: mkdocs-site
+    component: documentation
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/cloud-design-dev/tech-lab-demos.git
+      ref: main
+    contextDir: .
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: docs-site/Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: mkdocs-site:latest
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+---
+# MkDocs Documentation Site ImageStream
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: mkdocs-site
+  namespace: tech-lab-demo
+  labels:
+    app: mkdocs-site
+    component: documentation
+spec:
+  lookupPolicy:
+    local: false
+---
+# MkDocs Documentation Site Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mkdocs-site-service
+  namespace: tech-lab-demo
+  labels:
+    app: mkdocs-site
+    component: documentation
+spec:
+  selector:
+    app: mkdocs-site
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP
+---
+# MkDocs Documentation Site Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mkdocs-site
+  namespace: tech-lab-demo
+  labels:
+    app: mkdocs-site
+    component: documentation
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mkdocs-site
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  template:
+    metadata:
+      labels:
+        app: mkdocs-site
+        component: documentation
+      annotations:
+        # Force pod restart when image changes
+        image.openshift.io/triggers: |
+          [
+            {
+              "from": {
+                "kind": "ImageStreamTag",
+                "name": "mkdocs-site:latest"
+              },
+              "fieldPath": "spec.template.spec.containers[0].image"
+            }
+          ]
+    spec:
+      containers:
+      - name: mkdocs-site
+        image: image-registry.openshift-image-registry.svc:5000/tech-lab-demo/mkdocs-site:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: NGINX_PORT
+          value: "8080"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 101
+---
+# MkDocs Documentation Site Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mkdocs-site-route
+  namespace: tech-lab-demo
+  labels:
+    app: mkdocs-site
+    component: documentation
+spec:
+  host: guide.dts-lab.fun
+  to:
+    kind: Service
+    name: mkdocs-site-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
