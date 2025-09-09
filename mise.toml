@@ -144,6 +144,17 @@ run = "docker stop mkdocs-site && docker rm mkdocs-site"
 description = "Deploy MkDocs site to OpenShift with custom domain"
 run = "cd docs-site/openshift && ./deploy.sh"
 
+[tasks.docs-redeploy-openshift]
+description = "Rebuild and redeploy MkDocs site to fix issues"
+run = [
+    "cd docs-site/openshift",
+    "oc delete deployment mkdocs-site || true",
+    "oc delete bc mkdocs-site || true", 
+    "oc apply -f mkdocs-site.yaml",
+    "oc start-build mkdocs-site --wait",
+    "oc rollout status deployment/mkdocs-site --timeout=300s"
+]
+
 # Development Utilities
 [tasks.install-all]
 description = "Install dependencies for all apps and documentation"

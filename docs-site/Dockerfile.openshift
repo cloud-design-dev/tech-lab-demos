@@ -1,0 +1,51 @@
+# OpenShift-optimized Dockerfile for MkDocs static site
+# Uses a simpler approach with Python's built-in HTTP server
+
+FROM python:3.12-slim
+
+# Install MkDocs and build dependencies
+RUN pip install --no-cache-dir mkdocs-material mkdocs-git-revision-date-localized-plugin
+
+# Set work directory
+WORKDIR /app
+
+# Copy MkDocs configuration and documentation
+COPY mkdocs.yml .
+COPY docs/ ./docs/
+
+# Build the static site
+RUN mkdocs build
+
+# Create a simple Python HTTP server script for serving static files
+RUN echo '#!/usr/bin/env python3\n\
+import http.server\n\
+import socketserver\n\
+import os\n\
+\n\
+class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):\n\
+    def end_headers(self):\n\
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")\n\
+        self.send_header("Pragma", "no-cache")\n\
+        self.send_header("Expires", "0")\n\
+        super().end_headers()\n\
+\n\
+os.chdir("/app/site")\n\
+PORT = int(os.environ.get("PORT", 8080))\n\
+\n\
+with socketserver.TCPServer(("", PORT), MyHTTPRequestHandler) as httpd:\n\
+    print(f"Documentation server running on port {PORT}")\n\
+    httpd.serve_forever()\n\
+' > /app/serve.py && chmod +x /app/serve.py
+
+# OpenShift compatibility - set group permissions
+RUN chmod -R g+rwX /app
+
+# Expose port 8080
+EXPOSE 8080
+
+# Health check endpoint (simple Python server doesn't have /health, but root should work)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/ || exit 1
+
+# Start the Python HTTP server
+CMD ["python3", "/app/serve.py"]

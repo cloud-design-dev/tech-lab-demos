@@ -26,16 +26,12 @@ COPY --from=builder /app/site /usr/share/nginx/html
 # Copy nginx configuration
 COPY docs-site/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create nginx user and set permissions
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d && \
-    touch /var/run/nginx.pid && \
-    chown -R nginx:nginx /var/run/nginx.pid
+# OpenShift-compatible setup: prepare for arbitrary user ID
+RUN chmod -R g+rwX /var/cache/nginx /var/run /var/log/nginx /usr/share/nginx/html /etc/nginx/conf.d && \
+    chmod g+rw /var/cache/nginx /var/run /var/log/nginx
 
-# Switch to non-root user
-USER nginx
+# Don't set a specific user - let OpenShift assign arbitrary UID
+# OpenShift will run as non-root with a random UID in the root group (GID 0)
 
 # Expose port 8080 (OpenShift compatible)
 EXPOSE 8080

@@ -18,7 +18,7 @@ spec:
   strategy:
     type: Docker
     dockerStrategy:
-      dockerfilePath: docs-site/Dockerfile
+      dockerfilePath: docs-site/Dockerfile.openshift
   output:
     to:
       kind: ImageStreamTag
@@ -115,7 +115,7 @@ spec:
             cpu: "100m"
         livenessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -124,7 +124,7 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 10
@@ -132,16 +132,13 @@ spec:
           successThreshold: 1
           failureThreshold: 3
         securityContext:
-          runAsNonRoot: true
           allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
           seccompProfile:
             type: RuntimeDefault
-      securityContext:
-        runAsNonRoot: true
-        fsGroup: 101
+      securityContext: {}
 ---
 # MkDocs Documentation Site Route
 apiVersion: route.openshift.io/v1
