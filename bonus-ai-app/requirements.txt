@@ -1,0 +1,6 @@
+Flask==2.3.3
+anthropic==0.25.0
+chromadb==0.4.8
+numpy==1.24.3
+Werkzeug==2.3.7
+gunicorn==21.2.0

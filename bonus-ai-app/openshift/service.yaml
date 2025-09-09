@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bonus-ai-app-service
+  namespace: bonus-ai-app
+  labels:
+    app: bonus-ai-app
+spec:
+  selector:
+    app: bonus-ai-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP

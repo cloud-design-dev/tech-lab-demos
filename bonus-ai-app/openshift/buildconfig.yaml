@@ -1,0 +1,35 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: bonus-ai-app
+  namespace: bonus-ai-app
+  labels:
+    app: bonus-ai-app
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/cloud-design-dev/tech-lab-demos.git
+      ref: main
+    contextDir: bonus-ai-app
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: DockerImage
+        name: registry.access.redhat.com/ubi8/python-39
+      env:
+      - name: UPGRADE_PIP_TO_LATEST
+        value: "true"
+  output:
+    to:
+      kind: ImageStreamTag
+      name: bonus-ai-app:latest
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+    imageChange: {}
+  - type: GitHub
+    github:
+      secretReference:
+        name: github-webhook-secret

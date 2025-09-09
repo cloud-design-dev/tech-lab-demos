@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vector-db-storage
+  namespace: bonus-ai-app
+  labels:
+    app: bonus-ai-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: ibmc-vpc-block-5iops-tier

@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bonus-ai-app
+  namespace: bonus-ai-app
+  labels:
+    app: bonus-ai-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bonus-ai-app
+  template:
+    metadata:
+      labels:
+        app: bonus-ai-app
+    spec:
+      serviceAccountName: bonus-ai-app-sa
+      containers:
+      - name: bonus-ai-app
+        image: image-registry.openshift-image-registry.svc:5000/bonus-ai-app/bonus-ai-app:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "8080"
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anthropic-api-key
+              key: ANTHROPIC_API_KEY
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi" 
+            cpu: "500m"
+        volumeMounts:
+        - name: vector-db-storage
+          mountPath: /data
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 12
+      volumes:
+      - name: vector-db-storage
+        persistentVolumeClaim:
+          claimName: vector-db-storage
