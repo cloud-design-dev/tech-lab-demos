@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM registry.access.redhat.com/ubi9/python-312
 
 # Set working directory
 WORKDIR /app

@@ -69,8 +69,8 @@ if grep -q "REPLACE_WITH" openshift/anthropic-secret.yaml; then
     fi
 fi
 
-oc apply -f openshift/anthropic-secret.yaml
-print_success "Anthropic API key secret created"
+#oc apply -f openshift/anthropic-secret.yaml
+#print_success "Anthropic API key secret created"
 
 # Step 3: Create storage
 print_status "Step 3: Creating persistent storage..."
