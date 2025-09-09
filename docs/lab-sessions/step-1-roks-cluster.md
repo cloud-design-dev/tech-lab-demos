@@ -67,6 +67,7 @@ Click the **"Create Cluster"** button to begin the setup process.
 - **Subnets:** Select the subnet for each zone that ends with your group letter
 
 **Example for Group A:**
+
 - Zone 1: Select `subnet-zone-1-group-a`
 - Zone 2: Select `subnet-zone-2-group-a`
 - Zone 3: Select `subnet-zone-3-group-a`

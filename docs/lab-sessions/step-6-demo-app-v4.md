@@ -68,166 +68,77 @@ graph TD
     style App fill:#e8f5e8
 ```
 
-## 🚀 Step 1: Deploy Demo App V4 (Without Probes)
+## 📁 Step 1: Examine Demo App V4 Structure
 
-We'll start by deploying V4 without health probes, then add them progressively.
+First, let's explore the demo-app-v4 directory and understand the health probe deployment workflow.
 
-### 1. Create Build Configuration
+### 1. Navigate to Demo App V4
 
 ```bash
-# Create BuildConfig for Demo App V4
-oc apply -f - <<EOF
-apiVersion: build.openshift.io/v1
-kind: BuildConfig
-metadata:
-  name: demoapp4
-  labels:
-    app: demoapp4
-spec:
-  source:
-    type: Git
-    git:
-      uri: https://github.com/cloud-design-dev/tech-lab-demos.git
-      ref: main
-    contextDir: demo-app-v4
-  strategy:
-    type: Source
-    sourceStrategy:
-      from:
-        kind: DockerImage
-        name: registry.access.redhat.com/ubi8/python-39
-      env:
-      - name: UPGRADE_PIP_TO_LATEST
-        value: "true"
-  output:
-    to:
-      kind: ImageStreamTag
-      name: demoapp4:latest
-  triggers:
-  - type: ConfigChange
-  - type: ImageChange
-EOF
+# Change to the demo-app-v4 directory  
+cd tech-lab-demos/demo-app-v4
 
-# Create ImageStream
-oc apply -f - <<EOF
-apiVersion: image.openshift.io/v1
-kind: ImageStream
-metadata:
-  name: demoapp4
-  labels:
-    app: demoapp4
-spec:
-  lookupPolicy:
-    local: false
-EOF
+# Explore the application structure
+ls -la
+
+# Check the OpenShift deployment manifests
+ls -la openshift/
+
+# Review the README for health probe workflow
+cat README.md
 ```
 
-### 2. Build the Application
+### 2. Examine the Health Probe Configuration Files
 
 ```bash
+# Look at the base deployment (without probes)
+cat openshift/deployment-no-probes.yaml
+
+# Check the probe configuration files
+ls openshift/probes/
+
+# Review each probe type
+cat openshift/probes/startup-probe.yaml
+cat openshift/probes/liveness-probe.yaml  
+cat openshift/probes/readiness-probe.yaml
+```
+
+## 🚀 Step 2: Deploy Demo App V4 (Initially Without Probes)
+
+We'll start by deploying V4 without health probes, then add them step by step following the repository workflow.
+
+### 1. Deploy Base Application Without Probes
+
+```bash
+# Deploy the BuildConfig and ImageStream
+oc apply -f openshift/buildconfig.yaml
+oc apply -f openshift/imagestream.yaml
+
 # Start the build
 oc start-build demoapp4 --follow
 
-# Verify build success
+# Deploy without health probes (initial state)
+oc apply -f openshift/deployment-no-probes.yaml
+
+# Create Service and Route
+oc apply -f openshift/service.yaml
+oc apply -f openshift/route.yaml
+```
+
+### 2. Monitor Initial Deployment
+
+```bash
+# Check build status
 oc get builds -l buildconfig=demoapp4
+
+# Monitor deployment rollout
+oc rollout status deployment/demoapp4 --timeout=300s
+
+# Verify pods are running
+oc get pods -l app=demoapp4
 ```
 
-### 3. Deploy Without Health Probes
-
-```bash
-# Deploy V4 initially WITHOUT health probes
-oc apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: demoapp4
-  labels:
-    app: demoapp4
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: demoapp4
-  template:
-    metadata:
-      labels:
-        app: demoapp4
-    spec:
-      containers:
-      - name: demoapp4
-        image: image-registry.openshift-image-registry.svc:5000/$(oc project -q)/demoapp4:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-          protocol: TCP
-        env:
-        - name: POSTGRES_HOST
-          value: postgresql-service
-        - name: POSTGRES_PORT
-          value: "5432"
-        - name: POSTGRES_USER
-          value: demo_user
-        - name: POSTGRES_PASSWORD
-          value: SecurePass123!
-        - name: POSTGRES_DB
-          value: demo_db
-        - name: PORT
-          value: "8080"
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        # NO health probes initially - we'll add them step by step
-EOF
-```
-
-### 4. Create Service and Route
-
-```bash
-# Create Service
-oc apply -f - <<EOF
-apiVersion: v1
-kind: Service
-metadata:
-  name: demoapp4-service
-  labels:
-    app: demoapp4
-spec:
-  selector:
-    app: demoapp4
-  ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
-  type: ClusterIP
-EOF
-
-# Create Route
-oc apply -f - <<EOF
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: demoapp4
-  labels:
-    app: demoapp4
-spec:
-  to:
-    kind: Service
-    name: demoapp4-service
-    weight: 100
-  port:
-    targetPort: http
-  tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: Redirect
-  wildcardPolicy: None
-EOF
-```
-
-## 🔍 Step 2: Verify Initial Deployment and Probe Status
+## 🔍 Step 3: Verify Initial Deployment and Probe Status
 
 ### 1. Check Application Status
 
@@ -260,120 +171,24 @@ Visit the application in your browser and observe:
 - **Health probe status** shows missing probes
 - **Application warns** about missing production health checks
 
-## 🏥 Step 3: Configure Liveness Probe
+## 🏥 Step 4: Configure Startup Probe (First Health Check)
 
-Liveness probes determine if a container is running properly. If the liveness probe fails, Kubernetes restarts the container.
+Following the repository workflow, we'll add probes in the recommended order: startup, liveness, then readiness.
 
-### 1. Add Liveness Probe
+### 1. Add Startup Probe Using Repository Method
 
 ```bash
-# Add liveness probe to check if app is alive
-oc patch deployment demoapp4 -p '{
-  "spec": {
-    "template": {
-      "spec": {
-        "containers": [
-          {
-            "name": "demoapp4",
-            "livenessProbe": {
-              "httpGet": {
-                "path": "/api/health",
-                "port": 8080
-              },
-              "initialDelaySeconds": 30,
-              "periodSeconds": 10,
-              "timeoutSeconds": 5,
-              "successThreshold": 1,
-              "failureThreshold": 3
-            }
-          }
-        ]
-      }
-    }
-  }
-}'
+# Option 1: Apply the startup probe patch file
+oc apply -f openshift/probes/startup-probe.yaml
+
+# Option 2: Or apply the patch manually
+oc patch deployment demoapp4 --patch-file=openshift/probes/startup-probe.yaml
 ```
 
-### 2. Verify Liveness Probe
+### 2. Alternative: Manual Patch Command
 
 ```bash
-# Check that liveness probe was added
-oc describe deployment demoapp4 | grep -A 5 "Liveness"
-
-# Wait for rollout to complete
-oc rollout status deployment/demoapp4
-
-# Check pod status - should show 1/1 Ready
-oc get pods -l app=demoapp4
-```
-
-### 3. Test Liveness Probe in Application
-
-Refresh the application in your browser and notice:
-- **Liveness probe status** now shows ✅ Configured
-- **Application detects** the liveness probe automatically
-
-## 🚦 Step 4: Configure Readiness Probe
-
-Readiness probes determine if a container is ready to receive traffic. If the readiness probe fails, the pod is removed from service endpoints.
-
-### 1. Add Readiness Probe
-
-```bash
-# Add readiness probe to check if app is ready for traffic
-oc patch deployment demoapp4 -p '{
-  "spec": {
-    "template": {
-      "spec": {
-        "containers": [
-          {
-            "name": "demoapp4",
-            "readinessProbe": {
-              "httpGet": {
-                "path": "/api/health",
-                "port": 8080
-              },
-              "initialDelaySeconds": 5,
-              "periodSeconds": 5,
-              "timeoutSeconds": 3,
-              "successThreshold": 1,
-              "failureThreshold": 3
-            }
-          }
-        ]
-      }
-    }
-  }
-}'
-```
-
-### 2. Verify Readiness Probe
-
-```bash
-# Check both probes are configured
-oc describe deployment demoapp4 | grep -A 10 "Liveness\|Readiness"
-
-# Wait for rollout
-oc rollout status deployment/demoapp4
-
-# Verify pod readiness
-oc get pods -l app=demoapp4 -o wide
-```
-
-### 3. Check Application Status
-
-Refresh the application and observe:
-- **Readiness probe status** now shows ✅ Configured
-- **Two of three probes** are now configured
-
-## 🚀 Step 5: Configure Startup Probe
-
-Startup probes are used for slow-starting containers. They disable other probes until the container has finished starting.
-
-### 1. Add Startup Probe
-
-```bash
-# Add startup probe for container initialization
+# Manual patch if you prefer command-line approach
 oc patch deployment demoapp4 -p '{
   "spec": {
     "template": {
@@ -387,10 +202,119 @@ oc patch deployment demoapp4 -p '{
                 "port": 8080
               },
               "initialDelaySeconds": 10,
-              "periodSeconds": 3,
-              "timeoutSeconds": 2,
-              "successThreshold": 1,
-              "failureThreshold": 10
+              "periodSeconds": 5,
+              "timeoutSeconds": 3,
+              "failureThreshold": 6
+            }
+          }
+        ]
+      }
+    }
+  }
+}'
+```
+
+### 3. Verify Startup Probe
+
+```bash
+# Check that startup probe was added
+oc describe deployment demoapp4 | grep -A 10 "Startup"
+
+# Wait for rollout to complete
+oc rollout status deployment/demoapp4
+
+# Check pod status
+oc get pods -l app=demoapp4
+```
+
+### 4. Test Startup Probe in Application
+
+Refresh the application in your browser and notice:
+- **Startup probe status** now shows ✅ Configured
+- **Application detects** the startup probe automatically
+
+## 💓 Step 5: Configure Liveness Probe (Container Health)
+
+Liveness probes restart containers that become unhealthy.
+
+### 1. Add Liveness Probe Using Repository Method
+
+```bash
+# Apply the liveness probe patch file
+oc apply -f openshift/probes/liveness-probe.yaml
+
+# Alternative manual patch
+oc patch deployment demoapp4 -p '{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "demoapp4",
+            "livenessProbe": {
+              "httpGet": {
+                "path": "/api/health",
+                "port": 8080
+              },
+              "initialDelaySeconds": 60,
+              "periodSeconds": 10,
+              "timeoutSeconds": 5,
+              "failureThreshold": 3
+            }
+          }
+        ]
+      }
+    }
+  }
+}'
+```
+
+### 2. Verify Liveness Probe
+
+```bash
+# Check liveness probe configuration
+oc describe deployment demoapp4 | grep -A 10 "Liveness"
+
+# Wait for rollout
+oc rollout status deployment/demoapp4
+
+# Check pod status
+oc get pods -l app=demoapp4 -o wide
+```
+
+### 3. Test Liveness Probe in Application
+
+Refresh the application and observe:
+- **Liveness probe status** now shows ✅ Configured
+- **Two of three probes** are now configured
+
+## ✅ Step 6: Configure Readiness Probe (Traffic Readiness)
+
+Readiness probes determine when containers are ready to accept traffic.
+
+### 1. Add Readiness Probe (Final Health Check)
+
+```bash
+# Apply the readiness probe patch file
+oc apply -f openshift/probes/readiness-probe.yaml
+
+# Alternative manual patch
+oc patch deployment demoapp4 -p '{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "demoapp4",
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/api/health",
+                "port": 8080
+              },
+              "initialDelaySeconds": 10,
+              "periodSeconds": 5,
+              "timeoutSeconds": 3,
+              "failureThreshold": 3
             }
           }
         ]

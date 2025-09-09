@@ -78,231 +78,114 @@ graph TB
     style PVC fill:#e3f2fd
 ```
 
-## 🚀 Step 1: Deploy Demo App V3 with Resource Limits
+## 📁 Step 1: Examine Demo App V3 Structure
 
-We'll deploy V3 using `oc` commands with specific resource configurations.
+First, let's explore the demo-app-v3 directory structure and understand the resource management setup.
 
-### 1. Create the BuildConfig
+### 1. Navigate to Demo App V3
 
 ```bash
-# Create BuildConfig for Demo App V3
-oc apply -f - <<EOF
-apiVersion: build.openshift.io/v1
-kind: BuildConfig
-metadata:
-  name: demoapp3
-  labels:
-    app: demoapp3
-spec:
-  source:
-    type: Git
-    git:
-      uri: https://github.com/cloud-design-dev/tech-lab-demos.git
-      ref: main
-    contextDir: demo-app-v3
-  strategy:
-    type: Source
-    sourceStrategy:
-      from:
-        kind: DockerImage
-        name: registry.access.redhat.com/ubi8/python-39
-      env:
-      - name: UPGRADE_PIP_TO_LATEST
-        value: "true"
-  output:
-    to:
-      kind: ImageStreamTag
-      name: demoapp3:latest
-  triggers:
-  - type: ConfigChange
-  - type: ImageChange
-EOF
+# Change to the demo-app-v3 directory
+cd tech-lab-demos/demo-app-v3
 
-# Create ImageStream
-oc apply -f - <<EOF
-apiVersion: image.openshift.io/v1
-kind: ImageStream
-metadata:
-  name: demoapp3
-  labels:
-    app: demoapp3
-spec:
-  lookupPolicy:
-    local: false
-EOF
+# Explore the application structure
+ls -la
+
+# Check the OpenShift deployment manifests
+ls -la openshift/
+
+# Review the README for specific deployment instructions
+cat README.md
 ```
 
-### 2. Start the Build
+### 2. Examine the Resource Configuration
 
 ```bash
-# Start the S2I build
+# Look at the deployment manifest
+cat openshift/deployment.yaml
+
+# Check the HPA configuration
+cat openshift/hpa.yaml
+
+# Review other OpenShift resources
+ls openshift/*.yaml
+```
+
+## 🚀 Step 2: Deploy Demo App V3 with Resource Limits
+
+We'll deploy V3 using the provided manifests with specific resource configurations.
+
+### 1. Deploy All V3 Components
+
+```bash
+# Deploy all V3 components at once using the provided manifests
+oc apply -f openshift/
+
+# This creates:
+# - BuildConfig and ImageStream
+# - Deployment with resource limits
+# - Service and Route
+# - HorizontalPodAutoscaler
+```
+
+### 2. Alternative: Step-by-Step Deployment
+
+If you want to understand each component:
+
+```bash
+# Deploy BuildConfig and ImageStream first
+oc apply -f openshift/buildconfig.yaml
+oc apply -f openshift/imagestream.yaml
+
+# Start the build
 oc start-build demoapp3 --follow
 
-# Verify build completion
-oc get builds -l buildconfig=demoapp3
+# Deploy the application with resource limits
+oc apply -f openshift/deployment.yaml
+
+# Create Service and Route
+oc apply -f openshift/service.yaml
+oc apply -f openshift/route.yaml
 ```
 
-### 3. Deploy with Resource Limits
+### 3. Monitor the Deployment
 
 ```bash
-# Create Deployment with aggressive resource limits for scaling demo
-oc apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: demoapp3
-  labels:
-    app: demoapp3
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: demoapp3
-  template:
-    metadata:
-      labels:
-        app: demoapp3
-    spec:
-      containers:
-      - name: demoapp3
-        image: image-registry.openshift-image-registry.svc:5000/$(oc project -q)/demoapp3:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-          protocol: TCP
-        env:
-        - name: POSTGRES_HOST
-          value: postgresql-service
-        - name: POSTGRES_PORT
-          value: "5432"
-        - name: POSTGRES_USER
-          value: demo_user
-        - name: POSTGRES_PASSWORD
-          value: SecurePass123!
-        - name: POSTGRES_DB
-          value: demo_db
-        - name: PORT
-          value: "8080"
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
-        livenessProbe:
-          httpGet:
-            path: /api/health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /api/health
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
-EOF
+# Watch the build process
+oc get builds -w
+
+# Monitor deployment rollout
+oc rollout status deployment/demoapp3 --timeout=300s
+
+# Check pod status
+oc get pods -l app=demoapp3
 ```
 
-### 4. Create Service and Route
+## 📈 Step 3: Configure Horizontal Pod Autoscaler
+
+The HPA should already be deployed if you used `oc apply -f openshift/`. Let's verify and understand the configuration.
+
+### 1. Verify HPA Deployment
 
 ```bash
-# Create Service
-oc apply -f - <<EOF
-apiVersion: v1
-kind: Service
-metadata:
-  name: demoapp3-service
-  labels:
-    app: demoapp3
-spec:
-  selector:
-    app: demoapp3
-  ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
-  type: ClusterIP
-EOF
+# Check if HPA was created from the manifest
+oc get hpa demoapp3-hpa
 
-# Create Route with HTTPS
-oc apply -f - <<EOF
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: demoapp3
-  labels:
-    app: demoapp3
-spec:
-  to:
-    kind: Service
-    name: demoapp3-service
-    weight: 100
-  port:
-    targetPort: http
-  tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: Redirect
-  wildcardPolicy: None
-EOF
+# If not created, deploy it manually
+oc apply -f openshift/hpa.yaml
 ```
 
-## 📈 Step 2: Configure Horizontal Pod Autoscaler
-
-Now we'll set up HPA to automatically scale based on resource usage.
-
-### 1. Create the HPA
+### 2. Examine HPA Configuration
 
 ```bash
-# Create HPA with CPU and memory targets
-oc apply -f - <<EOF
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: demoapp3-hpa
-  labels:
-    app: demoapp3
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: demoapp3
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 50
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 70
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-      - type: Percent
-        value: 50
-        periodSeconds: 60
-    scaleUp:
-      stabilizationWindowSeconds: 60
-      policies:
-      - type: Percent
-        value: 100
-        periodSeconds: 30
-      - type: Pods
-        value: 2
-        periodSeconds: 60
-EOF
+# View the HPA configuration
+oc describe hpa demoapp3-hpa
+
+# Check the HPA manifest content
+cat openshift/hpa.yaml
 ```
 
-### 2. Verify HPA Configuration
+### 3. Monitor HPA Status
 
 ```bash
 # Check HPA status
@@ -315,7 +198,7 @@ oc describe hpa demoapp3-hpa
 watch -n 5 'oc get hpa demoapp3-hpa'
 ```
 
-## 🔍 Step 3: Monitor Initial State
+## 🔍 Step 4: Monitor Initial State
 
 ### 1. Check Current Resource Usage
 
@@ -349,7 +232,7 @@ Visit the application in your browser and notice:
 - **Load testing controls** for triggering scaling
 - **Multiple pod hostnames** if you refresh (load balancing)
 
-## ⚡ Step 4: Load Testing and Scaling
+## ⚡ Step 5: Load Testing and Scaling
 
 ### 1. Generate Load Using Built-in Endpoints
 
@@ -415,7 +298,7 @@ oc describe deployment demoapp3
 oc get events --sort-by=.metadata.creationTimestamp | tail -20
 ```
 
-## 📊 Step 5: Analyze Scaling Behavior
+## 📊 Step 6: Analyze Scaling Behavior
 
 ### 1. Understanding the Scaling Metrics
 
@@ -444,7 +327,7 @@ oc get events --field-selector involvedObject.name=demoapp3-hpa --sort-by=.metad
 oc get hpa demoapp3-hpa -o yaml | grep -A 20 conditions:
 ```
 
-## 🎯 Step 6: Advanced Scaling Operations
+## 🎯 Step 7: Advanced Scaling Operations
 
 ### 1. Manual Scaling Override
 
@@ -476,7 +359,7 @@ oc patch hpa demoapp3-hpa -p '{"spec":{"metrics":[{"type":"Resource","resource":
 oc get hpa demoapp3-hpa -o yaml | grep -A 20 behavior:
 ```
 
-## 🔬 Step 7: Database Performance Under Load
+## 🔬 Step 8: Database Performance Under Load
 
 ### 1. Check Database Connection Pool
 

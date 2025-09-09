@@ -67,110 +67,52 @@ Before starting this step:
         style H fill:#e3f2fd
     ```
 
-## 🗄️ Step 1: Deploy PostgreSQL Database
+## 📁 Step 1: Clone the Repository and Set Up Environment
 
-First, we'll deploy PostgreSQL with persistent storage using `oc` commands.
+First, we'll clone the demo repository and examine the demo-app-v2 structure.
 
-### 1. Create PostgreSQL Resources
+### 1. Clone the Repository
 
 ```bash
-# Create the PostgreSQL deployment with persistent storage
-oc apply -f - <<EOF
----
-# PostgreSQL Persistent Volume Claim
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgresql-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: ibmc-vpc-block-5iops-tier
----
-# PostgreSQL Secret
-apiVersion: v1
-kind: Secret
-metadata:
-  name: postgresql-secret
-type: Opaque
-data:
-  # Base64 encoded values
-  # username: demo_user
-  # password: SecurePass123!
-  # database: demo_db
-  POSTGRES_USER: ZGVtb191c2Vy
-  POSTGRES_PASSWORD: U2VjdXJlUGFzczEyMyE=
-  POSTGRES_DB: ZGVtb19kYg==
----
-# PostgreSQL Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgresql-service
-spec:
-  selector:
-    app: postgresql
-  ports:
-    - port: 5432
-      targetPort: 5432
-  type: ClusterIP
----
-# PostgreSQL Deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: postgresql
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgresql
-  template:
-    metadata:
-      labels:
-        app: postgresql
-    spec:
-      containers:
-      - name: postgresql
-        image: postgres:15-alpine
-        env:
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: postgresql-secret
-              key: POSTGRES_USER
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgresql-secret
-              key: POSTGRES_PASSWORD
-        - name: POSTGRES_DB
-          valueFrom:
-            secretKeyRef:
-              name: postgresql-secret
-              key: POSTGRES_DB
-        - name: PGDATA
-          value: /var/lib/postgresql/data/pgdata
-        ports:
-        - containerPort: 5432
-        volumeMounts:
-        - name: postgresql-storage
-          mountPath: /var/lib/postgresql/data
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "250m"
-      volumes:
-      - name: postgresql-storage
-        persistentVolumeClaim:
-          claimName: postgresql-pvc
-EOF
+# Clone the tech-lab-demos repository
+git clone https://github.com/cloud-design-dev/tech-lab-demos.git
+cd tech-lab-demos
+
+# Explore the demo-app-v2 directory structure
+ls -la demo-app-v2/
+
+# Check the OpenShift manifests
+ls -la demo-app-v2/openshift/
+```
+
+### 2. Examine the V2 Architecture
+
+```bash
+# Review the application structure
+cat demo-app-v2/README.md
+
+# Look at the OpenShift deployment files
+ls demo-app-v2/openshift/
+# You should see:
+# - postgresql.yaml (database deployment)
+# - app-v2.yaml (application deployment)
+```
+
+## 🗄️ Step 2: Deploy PostgreSQL Database
+
+We'll use the provided PostgreSQL manifest from the repository.
+
+### 1. Deploy PostgreSQL with Persistent Storage
+
+```bash
+# Deploy PostgreSQL using the provided manifest
+oc apply -f demo-app-v2/openshift/postgresql.yaml
+
+# The manifest includes:
+# - PersistentVolumeClaim (postgresql-pvc)
+# - Secret (postgresql-secret) 
+# - Service (postgresql-service)
+# - Deployment (postgresql)
 ```
 
 ### 2. Verify PostgreSQL Deployment
@@ -199,87 +141,97 @@ oc exec -it deployment/postgresql -- psql -U demo_user -d demo_db -c "SELECT ver
 # Should show PostgreSQL version information
 ```
 
-## 🚀 Step 2: Deploy Demo App V2
+## 🚀 Step 3: Deploy Demo App V2
 
-Now we'll deploy the application that connects to PostgreSQL.
+Now we'll deploy the application using the provided manifest files.
 
-### 1. Deploy Demo App V2 Using Import from Git
-
-You have two options for deployment:
-
-=== "Option A: Web Console (Recommended)"
-
-    1. Go to **Developer** view → **+Add** → **Import from Git**
-    2. **Git Repository:**
-       ```
-       https://github.com/cloud-design-dev/tech-lab-demos
-       ```
-    3. **Advanced Git Options:**
-       - **Context dir:** `demo-app-v2`
-    4. **General Settings:**
-       - **Application:** `[group-letter]-demo-apps` (same as V1)
-       - **Name:** `demoapp2`
-    5. **Advanced Options:**
-       - **Target Port:** `8080`
-       - **Create Route:** ✅ Enabled
-       - **Secure Route:** ✅ Enabled
-       - **TLS Termination:** Edge
-    6. **Environment Variables:** (Add these in Advanced Options)
-       - `POSTGRES_HOST` = `postgresql-service`
-       - `POSTGRES_PORT` = `5432` 
-       - `POSTGRES_USER` = `demo_user`
-       - `POSTGRES_PASSWORD` = `SecurePass123!`
-       - `POSTGRES_DB` = `demo_db`
-
-=== "Option B: Command Line"
-
-    ```bash
-    # Create Demo App V2 using oc new-app
-    oc new-app https://github.com/cloud-design-dev/tech-lab-demos \
-      --context-dir=demo-app-v2 \
-      --name=demoapp2 \
-      --env POSTGRES_HOST=postgresql-service \
-      --env POSTGRES_PORT=5432 \
-      --env POSTGRES_USER=demo_user \
-      --env POSTGRES_PASSWORD=SecurePass123! \
-      --env POSTGRES_DB=demo_db
-    
-    # Create a route for external access
-    oc expose service demoapp2 \
-      --port=8080 \
-      --hostname=demoapp2-${GROUP_LETTER}-project.apps.your-cluster.domain.com
-    
-    # Enable HTTPS
-    oc patch route demoapp2 -p '{"spec":{"tls":{"termination":"edge","insecureEdgeTerminationPolicy":"Redirect"}}}'
-    ```
-
-### 2. Monitor the Build Process
+### 1. Deploy Demo App V2 Using Command Line
 
 ```bash
-# Watch the build logs
+# Deploy the application using the provided manifest
+oc apply -f demo-app-v2/openshift/app-v2.yaml
+
+# The manifest includes:
+# - BuildConfig (builds from GitHub repo)
+# - ImageStream (stores built images)
+# - Deployment (runs the application)
+# - Service (internal networking)
+# - Route (external access with HTTPS)
+```
+
+### 2. Alternative: Step-by-Step Deployment
+
+If you prefer to understand each component, you can deploy them individually:
+
+```bash
+# Create the BuildConfig and ImageStream
+oc apply -f - <<EOF
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: demoapp2
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/cloud-design-dev/tech-lab-demos.git
+    contextDir: demo-app-v2
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        namespace: openshift
+        name: python:3.11
+  output:
+    to:
+      kind: ImageStreamTag
+      name: demoapp2:latest
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: demoapp2
+EOF
+
+# Start the build
+oc start-build demoapp2 --follow
+```
+
+### 3. Monitor the Deployment Process
+
+```bash
+# Monitor the build process
+oc get builds -w
+
+# Watch build logs (in a separate terminal)
 oc logs -f bc/demoapp2
 
-# Check build status
-oc get builds
+# Check build completion
+oc get builds -l buildconfig=demoapp2
 
-# Wait for deployment to complete
+# Monitor deployment rollout
 oc rollout status deployment/demoapp2 --timeout=300s
 ```
 
-### 3. Verify Application Deployment
+### 4. Verify Application Deployment
 
 ```bash
-# Check that all pods are running
+# Check all components are running
 oc get pods -l app=demoapp2
 
-# Get the application route
-oc get route demoapp2 -o jsonpath='{.spec.host}'
+# Verify the route was created
+oc get route demoapp2
 
-# Test the application endpoint
-curl -k https://$(oc get route demoapp2 -o jsonpath='{.spec.host}')/api/health
+# Test application connectivity
+APP_URL=$(oc get route demoapp2 -o jsonpath='{.spec.host}')
+echo "Demo App V2 URL: https://$APP_URL"
+
+# Test the health endpoint
+curl -k https://$APP_URL/api/health
 ```
 
-## 📊 Step 3: Compare V1 vs V2 Behavior
+## 📊 Step 4: Compare V1 vs V2 Behavior
 
 Now you can directly compare the persistence behavior between the two applications.
 
@@ -318,7 +270,7 @@ oc wait --for=condition=Ready pod -l app=demoapp2
 # Check the V1 app - data will be gone (if any was added since last restart)
 ```
 
-## 🔍 Step 4: Explore Storage Concepts
+## 🔍 Step 5: Explore Storage Concepts
 
 ### 1. Examine Persistent Volume Claims
 
@@ -356,7 +308,7 @@ oc adm top pods -l app=postgresql
 oc adm top pods -l app=demoapp2
 ```
 
-## 📈 Step 5: Database Operations
+## 📈 Step 6: Database Operations
 
 ### 1. Scale the Application (Database Persists)
 

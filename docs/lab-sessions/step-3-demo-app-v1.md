@@ -116,14 +116,14 @@ Click **"Create"** to start the deployment process.
 
 ### 1. Watch the Build Process
 
-1. In the topology view, you'll see your application appear
-2. Under the **Build** section, click **"View Logs"** to watch the S2I build
-3. The build process will:
-   - Pull the source code from GitHub
-   - Detect it's a Python application
-   - Install dependencies from `requirements.txt`
-   - Create a container image
-   - Store the image in OpenShift's internal registry
+- In the topology view, you'll see your application appear
+- Under the **Build** section, click **"View Logs"** to watch the S2I build
+- The build process will:
+    - Pull the source code from GitHub
+    - Detect it's a Python application
+    - Install dependencies from `requirements.txt`
+    - Create a container image
+    - Store the image in OpenShift's internal registry
 
 ### 2. Build Log Analysis
 
