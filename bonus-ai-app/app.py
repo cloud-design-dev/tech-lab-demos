@@ -16,6 +16,14 @@ import hashlib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Import seed data
+try:
+    from seed_data import get_seed_facts, get_random_facts, get_facts_by_category, get_available_categories, CATEGORY_DESCRIPTIONS
+    SEED_DATA_AVAILABLE = True
+except ImportError:
+    logger.warning("Seed data not available")
+    SEED_DATA_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,6 +48,10 @@ class SimpleVectorDB:
         
         # Load existing data
         self._load_data()
+        
+        # Load seed data if database is empty
+        if len(self.facts) == 0 and SEED_DATA_AVAILABLE:
+            self._load_seed_data()
         
     def _load_data(self):
         """Load existing facts and vectors from disk"""
@@ -154,6 +166,25 @@ class SimpleVectorDB:
     def count(self) -> int:
         """Get total number of facts"""
         return len(self.facts)
+    
+    def _load_seed_data(self):
+        """Load pre-seeded cat facts"""
+        try:
+            seed_facts = get_seed_facts()
+            logger.info(f"Loading {len(seed_facts)} seed facts...")
+            
+            for fact_data in seed_facts:
+                self.facts.append(fact_data["fact"])
+                self.metadata.append(fact_data["metadata"])
+            
+            # Build initial vectors
+            self._rebuild_vectors()
+            self._save_data()
+            
+            logger.info(f"Successfully loaded {len(seed_facts)} seed facts")
+            
+        except Exception as e:
+            logger.error(f"Error loading seed data: {e}")
 
 
 class CatFactsAI:
@@ -211,6 +242,10 @@ class ChromaDBWrapper:
     def __init__(self, client, collection):
         self.client = client
         self.collection = collection
+        
+        # Load seed data if collection is empty
+        if self.count() == 0 and SEED_DATA_AVAILABLE:
+            self._load_seed_data()
         
     def add_fact(self, fact: str, metadata: dict) -> str:
         fact_id = hashlib.md5(f"{fact}_{datetime.utcnow().isoformat()}".encode()).hexdigest()
@@ -273,6 +308,79 @@ class ChromaDBWrapper:
         except Exception as e:
             logger.error(f"Error getting count: {str(e)}")
             return 0
+    
+    def _load_seed_data(self):
+        """Load pre-seeded cat facts into ChromaDB"""
+        try:
+            seed_facts = get_seed_facts()
+            logger.info(f"Loading {len(seed_facts)} seed facts into ChromaDB...")
+            
+            # Prepare batch data for ChromaDB
+            documents = [fact_data["fact"] for fact_data in seed_facts]
+            metadatas = [fact_data["metadata"] for fact_data in seed_facts]
+            ids = [hashlib.md5(f"{fact_data['fact']}_{fact_data['metadata']['timestamp']}".encode()).hexdigest() 
+                   for fact_data in seed_facts]
+            
+            # Add to ChromaDB in batch
+            self.collection.add(
+                documents=documents,
+                metadatas=metadatas,
+                ids=ids
+            )
+            
+            logger.info(f"Successfully loaded {len(seed_facts)} seed facts into ChromaDB")
+            
+        except Exception as e:
+            logger.error(f"Error loading seed data into ChromaDB: {e}")
+
+
+class CatFactsAI:
+    def __init__(self):
+        # Initialize Anthropic client
+        self.anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+        if not self.anthropic_api_key:
+            logger.error("ANTHROPIC_API_KEY environment variable not set")
+            raise ValueError("Anthropic API key is required")
+        
+        self.anthropic = Anthropic(api_key=self.anthropic_api_key)
+        
+        # Try to initialize ChromaDB first (if available), otherwise use Simple Vector DB
+        self.vector_db = self._initialize_vector_db()
+        
+        logger.info(f"CatFactsAI initialized successfully with {type(self.vector_db).__name__}")
+    
+    def _initialize_vector_db(self):
+        """Try to initialize ChromaDB first, fall back to Simple Vector DB"""
+        try:
+            # Try ChromaDB first (newer SQLite should work with UBI9 Python 3.12)
+            import chromadb
+            import sqlite3
+            
+            # Check SQLite version
+            sqlite_version = sqlite3.sqlite_version
+            logger.info(f"SQLite version: {sqlite_version}")
+            
+            # ChromaDB needs SQLite >= 3.35.0
+            sqlite_version_parts = [int(x) for x in sqlite_version.split('.')]
+            if sqlite_version_parts[0] > 3 or (sqlite_version_parts[0] == 3 and sqlite_version_parts[1] >= 35):
+                logger.info("SQLite version is compatible with ChromaDB, attempting to use it...")
+                
+                chroma_client = chromadb.PersistentClient(path="/data/chroma")
+                collection = chroma_client.get_or_create_collection(
+                    name="cat_facts",
+                    metadata={"hnsw:space": "cosine"}
+                )
+                logger.info("Successfully initialized ChromaDB!")
+                return ChromaDBWrapper(chroma_client, collection)
+            else:
+                logger.warning(f"SQLite version {sqlite_version} is too old for ChromaDB (needs >= 3.35.0)")
+                
+        except Exception as e:
+            logger.warning(f"ChromaDB initialization failed: {e}")
+        
+        # Fall back to Simple Vector DB
+        logger.info("Using Simple Vector DB as fallback")
+        return SimpleVectorDB()
     
     def generate_cat_fact(self, user_query: str = None) -> Dict:
         """Generate a cat fact using Anthropic's Claude (cheapest model: claude-3-haiku)"""
