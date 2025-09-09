@@ -12,19 +12,11 @@ Demo App V3 builds upon the persistence features of V2 and adds:
 
 ## Prerequisites
 
-Before deploying, ensure you have:
+> needs fix
 
-```bash
-# Verify OpenShift CLI access
-oc whoami
-oc project
-
-# Check cluster access
-oc get nodes
-
-# Verify you're in the correct project/namespace
-oc project demo-lab-apps  # or your target namespace
-```
+- Launch Cloud Shell: https://cloud.ibm.com/shell
+- list clusters with `ibmcloud oc clusters`
+- configure cluster with admin flag: `ibmcloud oc cluster config --cluster CLUSTER_NAME --admin`
 
 ## Step-by-Step Deployment
 
