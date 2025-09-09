@@ -252,24 +252,42 @@ def get_next_available_group():
     return new_group
 
 def get_vpc_info_from_group_name(group_name):
-    """Extract VPC information from group name"""
+    """Extract VPC information from group name (supports both old numeric and new letter formats)"""
     if not group_name or not group_name.startswith("Group "):
         return None, None
     
     try:
-        # Extract letter from "Group A" format
-        group_letter = group_name.replace("Group ", "").lower()
+        # Extract the part after "Group "
+        group_identifier = group_name.replace("Group ", "").strip()
         
-        # Convert letter to index (a=0, b=1, etc.)
-        group_index = ord(group_letter) - ord('a')
+        # Check if it's a letter format (new system)
+        if len(group_identifier) == 1 and group_identifier.isalpha():
+            group_letter = group_identifier.lower()
+            group_index = ord(group_letter) - ord('a')
+            
+            if group_index < 0 or group_index >= 25:
+                return None, None
+            
+            # Calculate VPC number
+            vpc_number = (group_index // 5) + 1
+            return group_letter.upper(), vpc_number
         
-        if group_index < 0 or group_index >= 25:
-            return None, None
+        # Check if it's a numeric format (old system) - convert to letter
+        elif group_identifier.isdigit():
+            group_number = int(group_identifier)
+            # Convert group number to index (Group 1 = index 0, Group 2 = index 1, etc.)
+            group_index = group_number - 1
+            
+            if group_index < 0 or group_index >= 25:
+                return None, None
+            
+            # Convert to letter
+            group_letter = chr(ord('a') + group_index).upper()
+            vpc_number = (group_index // 5) + 1
+            
+            return group_letter, vpc_number
         
-        # Calculate VPC number
-        vpc_number = (group_index // 5) + 1
-        
-        return group_letter.upper(), vpc_number
+        return None, None
     except:
         return None, None
 
@@ -517,6 +535,64 @@ def clear_user_cache():
     _user_cache = None
     _cache_timestamp = None
     return jsonify({"message": "User cache cleared successfully"})
+
+@app.route('/api/admin/migrate-groups', methods=['POST'])
+def migrate_groups_to_letters():
+    """Migrate existing numeric groups to letter-based groups"""
+    if not is_admin_authenticated():
+        return jsonify({"error": "Authentication required"}), 401
+    
+    try:
+        # Get all groups and users that need migration
+        numeric_groups = Group.query.filter(Group.name.like('Group %')).all()
+        migration_results = []
+        
+        for group in numeric_groups:
+            # Extract the number from "Group 1", "Group 2", etc.
+            group_identifier = group.name.replace("Group ", "").strip()
+            
+            # Only migrate numeric groups
+            if group_identifier.isdigit():
+                group_number = int(group_identifier)
+                group_index = group_number - 1  # Group 1 = index 0
+                
+                if 0 <= group_index < 25:
+                    # Convert to letter
+                    new_letter = chr(ord('a') + group_index).upper()
+                    old_name = group.name
+                    new_name = f"Group {new_letter}"
+                    
+                    # Update group name
+                    group.name = new_name
+                    
+                    # Update all users in this group
+                    users_in_group = User.query.filter_by(group_name=old_name).all()
+                    for user in users_in_group:
+                        user.group_name = new_name
+                    
+                    migration_results.append({
+                        "old_name": old_name,
+                        "new_name": new_name,
+                        "users_updated": len(users_in_group),
+                        "group_letter": new_letter,
+                        "vpc_number": (group_index // 5) + 1
+                    })
+        
+        # Commit all changes
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"Successfully migrated {len(migration_results)} groups to letter format",
+            "migrations": migration_results
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": f"Migration failed: {str(e)}"
+        }), 500
 
 @app.route('/api/ibm-cloud-users')
 def get_ibm_cloud_users():

@@ -122,15 +122,28 @@
                     const groupData = data.groups.find(g => g.name === groupName);
                     const isFull = groupData && groupData.is_full;
                     
-                    // Extract group letter and VPC from group name
+                    // Extract group letter and VPC from group name (supports both old numeric and new letter formats)
                     let groupLetter = 'N/A';
                     let vpcNumber = 'N/A';
                     if (groupName && groupName.startsWith("Group ")) {
-                        const letter = groupName.replace("Group ", "").toLowerCase();
-                        const letterIndex = letter.charCodeAt(0) - 97; // a=0, b=1, etc.
-                        if (letterIndex >= 0 && letterIndex < 25) {
-                            groupLetter = letter.toUpperCase();
-                            vpcNumber = Math.floor(letterIndex / 5) + 1;
+                        const identifier = groupName.replace("Group ", "").trim();
+                        
+                        // Check if it's a letter format (new system)
+                        if (identifier.length === 1 && /[a-zA-Z]/.test(identifier)) {
+                            const letterIndex = identifier.toLowerCase().charCodeAt(0) - 97;
+                            if (letterIndex >= 0 && letterIndex < 25) {
+                                groupLetter = identifier.toUpperCase();
+                                vpcNumber = Math.floor(letterIndex / 5) + 1;
+                            }
+                        }
+                        // Check if it's a numeric format (old system) - convert to letter
+                        else if (/^\d+$/.test(identifier)) {
+                            const groupNumber = parseInt(identifier);
+                            const groupIndex = groupNumber - 1; // Group 1 = index 0, etc.
+                            if (groupIndex >= 0 && groupIndex < 25) {
+                                groupLetter = String.fromCharCode(97 + groupIndex).toUpperCase();
+                                vpcNumber = Math.floor(groupIndex / 5) + 1;
+                            }
                         }
                     }
                     
