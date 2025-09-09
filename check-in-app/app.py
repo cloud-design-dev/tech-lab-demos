@@ -214,6 +214,19 @@ def validate_user_with_ibm_cloud(email):
     print(f"User not found in active user list: {email}")
     return False
 
+def get_group_letter_and_vpc(group_index):
+    """Convert group index (0-24) to letter (a-y) and VPC number (1-5)"""
+    if group_index < 0 or group_index >= 25:
+        raise ValueError(f"Group index {group_index} out of range (0-24)")
+    
+    # Convert to letter (a-y)
+    group_letter = chr(ord('a') + group_index)
+    
+    # Calculate VPC (5 groups per VPC)
+    vpc_number = (group_index // 5) + 1
+    
+    return group_letter, vpc_number
+
 def get_next_available_group():
     """Get the next available group or create a new one"""
     # Find a group that's not full
@@ -222,15 +235,43 @@ def get_next_available_group():
     if available_group:
         return available_group
     
-    # Create a new group
+    # Create a new group with letter naming
     group_count = Group.query.count()
-    new_group_name = f"Group {group_count + 1}"
+    
+    # Ensure we don't exceed 25 groups (a-y)
+    if group_count >= 25:
+        raise ValueError("Maximum number of groups (25) reached")
+    
+    group_letter, vpc_number = get_group_letter_and_vpc(group_count)
+    new_group_name = f"Group {group_letter.upper()}"
     
     new_group = Group(name=new_group_name)
     db.session.add(new_group)
     db.session.commit()
     
     return new_group
+
+def get_vpc_info_from_group_name(group_name):
+    """Extract VPC information from group name"""
+    if not group_name or not group_name.startswith("Group "):
+        return None, None
+    
+    try:
+        # Extract letter from "Group A" format
+        group_letter = group_name.replace("Group ", "").lower()
+        
+        # Convert letter to index (a=0, b=1, etc.)
+        group_index = ord(group_letter) - ord('a')
+        
+        if group_index < 0 or group_index >= 25:
+            return None, None
+        
+        # Calculate VPC number
+        vpc_number = (group_index // 5) + 1
+        
+        return group_letter.upper(), vpc_number
+    except:
+        return None, None
 
 def assign_user_to_group(user):
     """Assign user to an available group"""
@@ -294,10 +335,13 @@ def checkin_user():
         # Check if user already exists
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
+            group_letter, vpc_number = get_vpc_info_from_group_name(existing_user.group_name)
             return jsonify({
                 "success": True,
                 "message": "You have already checked in!",
                 "group_name": existing_user.group_name,
+                "group_letter": group_letter,
+                "vpc_number": vpc_number,
                 "checked_in_at": existing_user.checked_in_at.isoformat(),
                 "already_registered": True
             })
@@ -317,11 +361,14 @@ def checkin_user():
         
         # Assign to group
         group = assign_user_to_group(new_user)
+        group_letter, vpc_number = get_vpc_info_from_group_name(new_user.group_name)
         
         return jsonify({
             "success": True,
             "message": "Successfully checked in!",
             "group_name": new_user.group_name,
+            "group_letter": group_letter,
+            "vpc_number": vpc_number,
             "group_members": group.current_members,
             "group_max": group.max_members,
             "checked_in_at": new_user.checked_in_at.isoformat(),
@@ -382,6 +429,8 @@ def lookup_user_group():
         
         # Get group information if user has a group
         group_info = None
+        group_letter, vpc_number = get_vpc_info_from_group_name(user.group_name)
+        
         if user.group_name:
             group = Group.query.filter_by(name=user.group_name).first()
             if group:
@@ -389,12 +438,16 @@ def lookup_user_group():
                 # Get other group members
                 group_members = User.query.filter_by(group_name=user.group_name).all()
                 group_info['members'] = [u.email for u in group_members]
+                group_info['group_letter'] = group_letter
+                group_info['vpc_number'] = vpc_number
         
         return jsonify({
             "success": True,
             "user": {
                 "email": user.email,
                 "group_name": user.group_name,
+                "group_letter": group_letter,
+                "vpc_number": vpc_number,
                 "checked_in_at": user.checked_in_at.isoformat() if user.checked_in_at else None,
                 "is_validated": user.is_validated
             },

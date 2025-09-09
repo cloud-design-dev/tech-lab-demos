@@ -31,6 +31,8 @@
                 <p id="result-message"></p>
                 <div id="group-info" class="group-info" style="display: none;">
                     <p><strong>Your Group:</strong> <span id="group-name"></span></p>
+                    <p><strong>Group Letter:</strong> <span id="group-letter"></span></p>
+                    <p><strong>VPC Assignment:</strong> VPC <span id="vpc-number"></span></p>
                     <p><strong>Group Members:</strong> <span id="group-members"></span>/<span id="group-max"></span></p>
                     <p><strong>Checked in at:</strong> <span id="checkin-time"></span></p>
                 </div>
@@ -58,6 +60,8 @@
             const resultMessage = document.getElementById('result-message');
             const groupInfo = document.getElementById('group-info');
             const groupName = document.getElementById('group-name');
+            const groupLetter = document.getElementById('group-letter');
+            const vpcNumber = document.getElementById('vpc-number');
             const groupMembers = document.getElementById('group-members');
             const groupMax = document.getElementById('group-max');
             const checkinTime = document.getElementById('checkin-time');
@@ -71,6 +75,8 @@
                 if (data && data.group_name) {
                     groupInfo.style.display = 'block';
                     groupName.textContent = data.group_name;
+                    groupLetter.textContent = data.group_letter || 'N/A';
+                    vpcNumber.textContent = data.vpc_number || 'N/A';
                     groupMembers.textContent = data.group_members || 'N/A';
                     groupMax.textContent = data.group_max || '3';
                     
@@ -163,7 +169,7 @@
                         if (data.group && data.group.members) {
                             groupMembers.textContent = data.group.members.length;
                             // Show group members in a more detailed way
-                            resultMessage.innerHTML = `You are in group: <strong>${data.user.group_name}</strong><br>` +
+                            resultMessage.innerHTML = `You are in group: <strong>${data.user.group_name}</strong> (Letter: <strong>${data.user.group_letter}</strong>, VPC <strong>${data.user.vpc_number}</strong>)<br>` +
                                                     `Group members: ${data.group.members.join(', ')}<br>` +
                                                     `Checked in: ${formatTime(data.user.checked_in_at)}`;
                         }

@@ -1,22 +1,4 @@
 ---
-# Check-in App Secret for sensitive environment variables
-apiVersion: v1
-kind: Secret
-metadata:
-  name: checkin-app-secret
-  namespace: tech-lab-demo
-type: Opaque
-data:
-  # Base64 encoded values (change in production)
-  # IBM_CLOUD_API_KEY: your-api-key-here (base64 encoded)
-  # IBM_CLOUD_ACCOUNT_ID: your-account-id-here (base64 encoded)
-  # FLASK_SECRET_KEY: super-secret-flask-key-2024 -> c3VwZXItc2VjcmV0LWZsYXNrLWtleS0yMDI0
-  # ADMIN_PASSWORD: demo-admin-2024 -> ZGVtby1hZG1pbi0yMDI0
-  IBM_CLOUD_API_KEY: ""
-  IBM_CLOUD_ACCOUNT_ID: "" 
-  FLASK_SECRET_KEY: c3VwZXItc2VjcmV0LWZsYXNrLWtleS0yMDI0
-  ADMIN_PASSWORD: ZGVtby1hZG1pbi0yMDI0
----
 # GitHub Webhook Secret for automated builds
 apiVersion: v1
 kind: Secret

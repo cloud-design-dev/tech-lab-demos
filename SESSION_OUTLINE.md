@@ -8,8 +8,8 @@
 - Click Create Cluster
     - Orchestrator: Select Red Hat OpenShift
 	- Infrastructure: Select VPC
-	- Virtual private cloud: Select the VPC that matches your group number from the drop down
-	- Location: No changes needed
+	- Virtual private cloud: Select the VPC that matches your group from the drop down. 
+	- Location: Select the subnet for each zone that ends in your group letter. For instance group `a` would select `lab-subnet-1-z1-ga` for zone 1 and `lab-subnet-1-z2-ga` for zone 2, and so on.
 	- OpenShift version: No changes needed
 	- OpenShift Container Platform (OCP) license: No changes needed
 	- Worker pool: Scale down default worker pool to 1 node per zone for a total of 3 workers

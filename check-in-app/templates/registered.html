@@ -122,9 +122,24 @@
                     const groupData = data.groups.find(g => g.name === groupName);
                     const isFull = groupData && groupData.is_full;
                     
+                    // Extract group letter and VPC from group name
+                    let groupLetter = 'N/A';
+                    let vpcNumber = 'N/A';
+                    if (groupName && groupName.startsWith("Group ")) {
+                        const letter = groupName.replace("Group ", "").toLowerCase();
+                        const letterIndex = letter.charCodeAt(0) - 97; // a=0, b=1, etc.
+                        if (letterIndex >= 0 && letterIndex < 25) {
+                            groupLetter = letter.toUpperCase();
+                            vpcNumber = Math.floor(letterIndex / 5) + 1;
+                        }
+                    }
+                    
                     html += `
                         <div class="group-card ${isFull ? 'full' : ''}">
                             <h4>${groupName} ${isFull ? '(Full)' : ''}</h4>
+                            <div style="color: #0f62fe; font-weight: bold; margin-bottom: 0.5rem;">
+                                Group Letter: ${groupLetter} | VPC ${vpcNumber}
+                            </div>
                             <div class="group-members">
                     `;
                     
