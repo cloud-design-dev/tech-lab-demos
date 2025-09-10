@@ -52,6 +52,7 @@ Click the **"Create Cluster"** button to begin the setup process.
 ### 4. Network Configuration
 
 #### Virtual Private Cloud
+
 - **Virtual private cloud:** Select the VPC that matches your group assignment
 
 | Group Letters | VPC to Select |
@@ -99,7 +100,7 @@ Click the **"Create Cluster"** button to begin the setup process.
 - **Network settings:** No changes needed (use defaults)
 
 #### Internal Registry
-- **Internal registry:** Select the **lab COS instance** from the dropdown
+- **Internal registry:** Select the **lab-cos-instance** from the dropdown
 
 ### 8. Security Configuration
 
@@ -112,8 +113,8 @@ Click the **"Create Cluster"** button to begin the setup process.
 
 #### Ingress Secrets Management
 - **Ingress secrets management:** 
-  - Select the **demo lab Secrets Manager instance**
-  - Choose the **tech-demo-lab-0825 Secrets Manager group**
+  - Select the **c2s-test-secretsmanager**
+  - Choose the **rst-secret-group** Secrets group
 
 #### VPC Security Groups
 - **VPC security groups:** No changes needed (use defaults)
@@ -132,19 +133,19 @@ Click the **"Create Cluster"** button to begin the setup process.
 ### 10. Integrations and Monitoring
 
 #### Activity Tracking
-- **Activity tracking:** No changes needed (default is fine)
+- **Activity tracking:** **Disable** this feature for the lab
 
 #### Logging
 - **Logging:** **Disable** this feature for the lab
 
 #### Monitoring
-- **Main monitoring:** Leave **enabled**
+- **Main monitoring:** **Disable** this feature for the lab
 - **Workload Protection:** **Disable** this feature for the lab
 
 ### 11. Review and Create
 
 #### Cost Review
-- Expected cost should be approximately **$600/month**
+- Expected cost should be approximately **$625/month**
 - This is for demonstration purposes only - clusters will be deleted after the lab
 
 #### Final Review
@@ -158,6 +159,8 @@ Review all settings to ensure they match your group assignment:
 Click **"Create"** to start the provisioning process.
 
 ## ⏳ Waiting for Cluster Provisioning
+
+The provisioning process typically takes **10-15 minutes**. During this time, IBM Cloud is setting up the necessary infrastructure and installing OpenShift. You may see errors related to the Ingress controller during this time; these are normal and should resolve once the cluster is fully operational.
 
 ### What Happens Next?
 

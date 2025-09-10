@@ -73,18 +73,6 @@ graph TD
     style D fill:#e8f5e8
 ```
 
-## 📋 Prerequisites
-
-Before starting the lab, ensure you have:
-
-- ✅ IBM Cloud account with appropriate permissions
-- ✅ Group assignment and VPC resources (provided during lab setup)
-- ✅ Basic familiarity with containers and Kubernetes concepts
-- ✅ OpenShift CLI (`oc`) installed (optional if you want to run commands locally vs Cloud Shell) 
-
-!!! tip "Don't have the ibmcloud cli, kubectl or oc installed? "
-    Don't worry you can use [Cloud Shell](https://cloud.ibm.com/shell) which includes all the tools you need for the lab
-
 ## 🎓 Learning Outcomes
 
 By the end of this lab, you'll have hands-on experience with:
@@ -123,9 +111,8 @@ By the end of this lab, you'll have hands-on experience with:
 
 Ready to begin? Here are your next steps:
 
-1. **[Register for the Lab](getting-started/registration.md)** - Get your group assignment and VPC resources
-2. **[Review Prerequisites](getting-started/prerequisites.md)** - Ensure you have everything needed
-3. **[Start Session 1](lab-sessions/step-1-roks-cluster.md)** - Deploy your first ROKS cluster
+1. **[Review Prerequisites](getting-started/prerequisites.md)** - Ensure you have everything needed
+2. **[Start Session 1](lab-sessions/step-1-roks-cluster.md)** - Deploy your first ROKS cluster
 
 ## 💡 Lab Structure
 

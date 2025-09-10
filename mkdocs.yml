@@ -94,7 +94,6 @@ nav:
   - Getting Started:
     - Overview: getting-started/overview.md
     - Prerequisites: getting-started/prerequisites.md
-    - Registration: getting-started/registration.md
   - Lab Sessions:
     - Session Overview: lab-sessions/overview.md
     - Step 1 - Deploy ROKS Cluster: lab-sessions/step-1-roks-cluster.md
@@ -109,7 +108,6 @@ nav:
     - V2 - Persistent Storage: demo-apps/v2-persistent.md
     - V3 - Resource Management: demo-apps/v3-resources.md
     - V4 - Health Probes: demo-apps/v4-health-probes.md
-    - Check-in App: demo-apps/checkin-app.md
   - Deployment Guides:
     - OpenShift Deployment: deployment/openshift.md
     - Local Development: deployment/local-development.md

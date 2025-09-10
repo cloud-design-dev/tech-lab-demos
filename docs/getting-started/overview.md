@@ -108,16 +108,7 @@ The lab follows a carefully structured progression:
 - **25 Groups Total** - Groups A through Y
 - **3 Participants per Group** - Collaborative learning environment
 - **5 VPCs** - 5 groups per VPC for resource organization
-- **Dedicated Resources** - Each group has isolated infrastructure
-
-### VPC Mapping
-| VPC | Groups | Resource Suffix |
-|-----|--------|-----------------|
-| VPC 1 | A-E | Subnets ending in `-ga`, `-gb`, etc. |
-| VPC 2 | F-J | Subnets ending in `-gf`, `-gg`, etc. |
-| VPC 3 | K-O | Subnets ending in `-gk`, `-gl`, etc. |
-| VPC 4 | P-T | Subnets ending in `-gp`, `-gq`, etc. |
-| VPC 5 | U-Y | Subnets ending in `-gu`, `-gv`, etc. |
+- **Dedicated Resources** - Each group has isolated OpenShift clusters and services
 
 ## ⏱️ Time Estimates
 
@@ -179,9 +170,9 @@ Throughout the lab, you have access to:
 The lab is designed to be self-paced with guided instruction. Each step builds upon the previous one, so it's important to complete them in order.
 
 **Next Steps:**
-1. [Complete Registration](registration.md) - Get your group assignment
-2. [Review Prerequisites](prerequisites.md) - Ensure you have everything needed
-3. [Start the Lab Sessions](../lab-sessions/overview.md) - Begin your OpenShift journey!
+
+1. [Review Prerequisites](prerequisites.md) - Ensure you have everything needed
+2. [Start the Lab Sessions](../lab-sessions/overview.md) - Begin your OpenShift journey!
 
 ---
 
