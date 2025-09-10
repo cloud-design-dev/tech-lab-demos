@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: bonus-ai-app
-  labels:
-    name: bonus-ai-app
-    app: bonus-ai-app
