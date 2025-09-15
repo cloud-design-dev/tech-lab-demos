@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Check if running on IBM Cloud Code Engine
+CODE_ENGINE_DEPLOYMENT = bool(os.environ.get('DATABASES_FOR_POSTGRESQL_CONNECTION'))
+
 try:
     from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
     from ibm_platform_services import UserManagementV1
@@ -17,6 +20,15 @@ try:
     IBM_SDK_AVAILABLE = True
 except ImportError:
     IBM_SDK_AVAILABLE = False
+
+# Import database operations for Code Engine deployment
+if CODE_ENGINE_DEPLOYMENT:
+    try:
+        from database import DatabaseOperations
+        print("Using IBM Cloud Code Engine database configuration")
+    except ImportError:
+        print("Warning: database.py not found, falling back to SQLAlchemy")
+        CODE_ENGINE_DEPLOYMENT = False
 
 app = Flask(__name__)
 
@@ -44,14 +56,23 @@ def get_database_url():
     # Priority 3: SQLite fallback
     return 'sqlite:///checkin.db'
 
-database_url = get_database_url()
-print(f"Using database: {database_url}")
-print(f"Database type: {'PostgreSQL' if database_url.startswith('postgresql://') else 'SQLite'}")
-
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
-db = SQLAlchemy(app)
+# Initialize database operations based on deployment type
+if CODE_ENGINE_DEPLOYMENT:
+    # Use IBM Cloud Code Engine database operations
+    db_ops = DatabaseOperations()
+    print("Initialized IBM Cloud Code Engine database operations")
+    # Set Flask config for sessions
+    app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
+else:
+    # Use SQLAlchemy for OpenShift/local deployment
+    database_url = get_database_url()
+    print(f"Using database: {database_url}")
+    print(f"Database type: {'PostgreSQL' if database_url.startswith('postgresql://') else 'SQLite'}")
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
+    db = SQLAlchemy(app)
 
 # Admin authentication configuration
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'demo-admin-2024')
@@ -60,53 +81,60 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'demo-admin-2024')
 def ensure_database():
     """Ensure database tables exist"""
     try:
-        with app.app_context():
-            db.create_all()
-            print("Database tables created successfully")
-            print(f"Database file location: {database_url}")
-            
-            # Test the connection
-            result = db.session.execute(text('SELECT 1')).scalar()
-            print(f"Database connection test: {result}")
+        if CODE_ENGINE_DEPLOYMENT:
+            # Use database.py operations for Code Engine
+            db_ops.ensure_tables()
+            print("Database tables created successfully (Code Engine)")
+        else:
+            # Use SQLAlchemy for OpenShift/local
+            with app.app_context():
+                db.create_all()
+                print("Database tables created successfully (SQLAlchemy)")
+                print(f"Database file location: {get_database_url()}")
+                
+                # Test the connection
+                result = db.session.execute(text('SELECT 1')).scalar()
+                print(f"Database connection test: {result}")
             
     except Exception as e:
         print(f"Error creating database tables: {e}")
         raise
 
-# Database Models
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    group_name = db.Column(db.String(100), nullable=True)
-    checked_in_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_validated = db.Column(db.Boolean, default=False)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'email': self.email,
-            'group_name': self.group_name,
-            'checked_in_at': self.checked_in_at.isoformat(),
-            'is_validated': self.is_validated
-        }
+# Database Models (only for SQLAlchemy deployment)
+if not CODE_ENGINE_DEPLOYMENT:
+    class User(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        email = db.Column(db.String(255), unique=True, nullable=False)
+        group_name = db.Column(db.String(100), nullable=True)
+        checked_in_at = db.Column(db.DateTime, default=datetime.utcnow)
+        is_validated = db.Column(db.Boolean, default=False)
+        
+        def to_dict(self):
+            return {
+                'id': self.id,
+                'email': self.email,
+                'group_name': self.group_name,
+                'checked_in_at': self.checked_in_at.isoformat(),
+                'is_validated': self.is_validated
+            }
 
-class Group(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
-    max_members = db.Column(db.Integer, default=3)
-    current_members = db.Column(db.Integer, default=0)
-    is_full = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'max_members': self.max_members,
-            'current_members': self.current_members,
-            'is_full': self.is_full,
-            'created_at': self.created_at.isoformat()
-        }
+    class Group(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.String(100), unique=True, nullable=False)
+        max_members = db.Column(db.Integer, default=3)
+        current_members = db.Column(db.Integer, default=0)
+        is_full = db.Column(db.Boolean, default=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        
+        def to_dict(self):
+            return {
+                'id': self.id,
+                'name': self.name,
+                'max_members': self.max_members,
+                'current_members': self.current_members,
+                'is_full': self.is_full,
+                'created_at': self.created_at.isoformat()
+            }
 
 # Global cache for user list to avoid repeated API calls
 _user_cache = None
@@ -229,27 +257,47 @@ def get_group_letter_and_vpc(group_index):
 
 def get_next_available_group():
     """Get the next available group or create a new one"""
-    # Find a group that's not full
-    available_group = Group.query.filter_by(is_full=False).first()
-    
-    if available_group:
-        return available_group
-    
-    # Create a new group with letter naming
-    group_count = Group.query.count()
-    
-    # Ensure we don't exceed 25 groups (a-y)
-    if group_count >= 25:
-        raise ValueError("Maximum number of groups (25) reached")
-    
-    group_letter, vpc_number = get_group_letter_and_vpc(group_count)
-    new_group_name = f"Group {group_letter.upper()}"
-    
-    new_group = Group(name=new_group_name)
-    db.session.add(new_group)
-    db.session.commit()
-    
-    return new_group
+    if CODE_ENGINE_DEPLOYMENT:
+        # Use database.py operations
+        available_group = db_ops.get_available_group()
+        
+        if available_group:
+            return available_group
+        
+        # Create a new group with letter naming
+        group_count = db_ops.get_group_count()
+        
+        # Ensure we don't exceed 25 groups (a-y)
+        if group_count >= 25:
+            raise ValueError("Maximum number of groups (25) reached")
+        
+        group_letter, vpc_number = get_group_letter_and_vpc(group_count)
+        new_group_name = f"Group {group_letter.upper()}"
+        
+        group_id = db_ops.create_group(new_group_name)
+        return db_ops.get_group_by_name(new_group_name)
+    else:
+        # Use SQLAlchemy operations
+        available_group = Group.query.filter_by(is_full=False).first()
+        
+        if available_group:
+            return available_group
+        
+        # Create a new group with letter naming
+        group_count = Group.query.count()
+        
+        # Ensure we don't exceed 25 groups (a-y)
+        if group_count >= 25:
+            raise ValueError("Maximum number of groups (25) reached")
+        
+        group_letter, vpc_number = get_group_letter_and_vpc(group_count)
+        new_group_name = f"Group {group_letter.upper()}"
+        
+        new_group = Group(name=new_group_name)
+        db.session.add(new_group)
+        db.session.commit()
+        
+        return new_group
 
 def get_vpc_info_from_group_name(group_name):
     """Extract VPC information from group name (supports both old numeric and new letter formats)"""
@@ -291,19 +339,35 @@ def get_vpc_info_from_group_name(group_name):
     except:
         return None, None
 
-def assign_user_to_group(user):
+def assign_user_to_group(user_data):
     """Assign user to an available group"""
     group = get_next_available_group()
     
-    user.group_name = group.name
-    group.current_members += 1
-    
-    # Mark group as full if it reaches max capacity
-    if group.current_members >= group.max_members:
-        group.is_full = True
-    
-    db.session.commit()
-    return group
+    if CODE_ENGINE_DEPLOYMENT:
+        # user_data is a dict from database.py operations
+        # Update user's group assignment
+        user_id = user_data['id']
+        group_name = group['name']
+        
+        # Update user with group assignment (this would need to be implemented in database.py)
+        # For now, we'll handle this in the calling function
+        
+        # Update group member count
+        db_ops.update_group_members(group_name, 1)
+        
+        # Return updated group info
+        return db_ops.get_group_by_name(group_name)
+    else:
+        # user is a SQLAlchemy User object
+        user_data['group_name'] = group.name if hasattr(group, 'name') else group['name']
+        group.current_members += 1
+        
+        # Mark group as full if it reaches max capacity
+        if group.current_members >= group.max_members:
+            group.is_full = True
+        
+        db.session.commit()
+        return group
 
 def is_admin_authenticated():
     """Check if the current session is authenticated as admin"""
@@ -350,51 +414,100 @@ def checkin_user():
         if not email:
             return jsonify({"success": False, "error": "Email is required"}), 400
         
-        # Check if user already exists
-        existing_user = User.query.filter_by(email=email).first()
-        if existing_user:
-            group_letter, vpc_number = get_vpc_info_from_group_name(existing_user.group_name)
+        if CODE_ENGINE_DEPLOYMENT:
+            # Check if user already exists using database.py
+            existing_user = db_ops.get_user_by_email(email)
+            if existing_user:
+                group_letter, vpc_number = get_vpc_info_from_group_name(existing_user['group_name'])
+                return jsonify({
+                    "success": True,
+                    "message": "You have already checked in!",
+                    "group_name": existing_user['group_name'],
+                    "group_letter": group_letter,
+                    "vpc_number": vpc_number,
+                    "checked_in_at": existing_user['checked_in_at'],
+                    "already_registered": True
+                })
+            
+            # Validate user with IBM Cloud
+            is_valid = validate_user_with_ibm_cloud(email)
+            if not is_valid:
+                return jsonify({
+                    "success": False,
+                    "error": "Email not found in authorized user list"
+                }), 403
+            
+            # Create new user
+            user_id = db_ops.create_user(email, is_validated=True)
+            new_user = db_ops.get_user_by_id(user_id)
+            
+            # Assign to group
+            group = assign_user_to_group(new_user)
+            
+            # Update user with group assignment
+            db_ops.update_user_group(user_id, group['name'])
+            updated_user = db_ops.get_user_by_id(user_id)
+            
+            group_letter, vpc_number = get_vpc_info_from_group_name(group['name'])
+            
             return jsonify({
                 "success": True,
-                "message": "You have already checked in!",
-                "group_name": existing_user.group_name,
+                "message": "Successfully checked in!",
+                "group_name": group['name'],
                 "group_letter": group_letter,
                 "vpc_number": vpc_number,
-                "checked_in_at": existing_user.checked_in_at.isoformat(),
-                "already_registered": True
+                "group_members": group['current_members'],
+                "group_max": group['max_members'],
+                "checked_in_at": updated_user['checked_in_at'],
+                "already_registered": False
+            })
+        else:
+            # Check if user already exists using SQLAlchemy
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                group_letter, vpc_number = get_vpc_info_from_group_name(existing_user.group_name)
+                return jsonify({
+                    "success": True,
+                    "message": "You have already checked in!",
+                    "group_name": existing_user.group_name,
+                    "group_letter": group_letter,
+                    "vpc_number": vpc_number,
+                    "checked_in_at": existing_user.checked_in_at.isoformat(),
+                    "already_registered": True
+                })
+            
+            # Validate user with IBM Cloud
+            is_valid = validate_user_with_ibm_cloud(email)
+            if not is_valid:
+                return jsonify({
+                    "success": False,
+                    "error": "Email not found in authorized user list"
+                }), 403
+            
+            # Create new user
+            new_user = User(email=email, is_validated=True)
+            db.session.add(new_user)
+            db.session.flush()  # Get the ID without committing
+            
+            # Assign to group
+            group = assign_user_to_group(new_user)
+            group_letter, vpc_number = get_vpc_info_from_group_name(new_user.group_name)
+            
+            return jsonify({
+                "success": True,
+                "message": "Successfully checked in!",
+                "group_name": new_user.group_name,
+                "group_letter": group_letter,
+                "vpc_number": vpc_number,
+                "group_members": group.current_members,
+                "group_max": group.max_members,
+                "checked_in_at": new_user.checked_in_at.isoformat(),
+                "already_registered": False
             })
         
-        # Validate user with IBM Cloud
-        is_valid = validate_user_with_ibm_cloud(email)
-        if not is_valid:
-            return jsonify({
-                "success": False,
-                "error": "Email not found in authorized user list"
-            }), 403
-        
-        # Create new user
-        new_user = User(email=email, is_validated=True)
-        db.session.add(new_user)
-        db.session.flush()  # Get the ID without committing
-        
-        # Assign to group
-        group = assign_user_to_group(new_user)
-        group_letter, vpc_number = get_vpc_info_from_group_name(new_user.group_name)
-        
-        return jsonify({
-            "success": True,
-            "message": "Successfully checked in!",
-            "group_name": new_user.group_name,
-            "group_letter": group_letter,
-            "vpc_number": vpc_number,
-            "group_members": group.current_members,
-            "group_max": group.max_members,
-            "checked_in_at": new_user.checked_in_at.isoformat(),
-            "already_registered": False
-        })
-        
     except Exception as e:
-        db.session.rollback()
+        if not CODE_ENGINE_DEPLOYMENT:
+            db.session.rollback()
         print(f"Check-in error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Vector Search Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea {
+            height: 120px;
+            resize: vertical;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .results {
+            margin-top: 20px;
+        }
+        .result-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        .result-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .result-content {
+            color: #666;
+            line-height: 1.5;
+        }
+        .result-distance {
+            font-size: 12px;
+            color: #999;
+            margin-top: 8px;
+        }
+        .stats {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+        }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        .success {
+            background: #efe;
+            color: #363;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 AI Vector Search Demo</h1>
+        <p>OpenShift deployment with ChromaDB vector database</p>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>📄 Add Document</h2>
+            <form id="addForm">
+                <div class="form-group">
+                    <label for="title">Title:</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="content">Content:</label>
+                    <textarea id="content" name="content" required placeholder="Enter document content..."></textarea>
+                </div>
+                <button type="submit">Add Document</button>
+            </form>
+            <div id="addResult"></div>
+        </div>
+
+        <div class="card">
+            <h2>🔍 Search Documents</h2>
+            <form id="searchForm">
+                <div class="form-group">
+                    <label for="query">Search Query:</label>
+                    <input type="text" id="query" name="query" required placeholder="Enter your search query...">
+                </div>
+                <div class="form-group">
+                    <label for="numResults">Number of Results:</label>
+                    <input type="number" id="numResults" name="numResults" value="5" min="1" max="20">
+                </div>
+                <button type="submit">Search</button>
+            </form>
+            <div class="loading" id="searchLoading">Searching...</div>
+            <div class="results" id="searchResults"></div>
+        </div>
+    </div>
+
+    <div class="stats">
+        <h2>📊 Application Statistics</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.total_requests }}</div>
+                <div class="stat-label">Total Requests</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.search_requests }}</div>
+                <div class="stat-label">Search Requests</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.add_requests }}</div>
+                <div class="stat-label">Add Requests</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.errors }}</div>
+                <div class="stat-label">Errors</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                title: formData.get('title'),
+                content: formData.get('content')
+            };
+            
+            try {
+                const response = await fetch('/api/documents', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                const resultDiv = document.getElementById('addResult');
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="success">Document added successfully! ID: ${result.id}</div>`;
+                    e.target.reset();
+                } else {
+                    resultDiv.innerHTML = `<div class="error">Error: ${result.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('addResult').innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            }
+        });
+
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                query: formData.get('query'),
+                n_results: parseInt(formData.get('numResults'))
+            };
+            
+            const loadingDiv = document.getElementById('searchLoading');
+            const resultsDiv = document.getElementById('searchResults');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                loadingDiv.style.display = 'none';
+                
+                if (response.ok) {
+                    if (result.results.length === 0) {
+                        resultsDiv.innerHTML = '<div class="result-item">No results found.</div>';
+                    } else {
+                        resultsDiv.innerHTML = result.results.map(item => `
+                            <div class="result-item">
+                                <div class="result-title">${item.title}</div>
+                                <div class="result-content">${item.content}</div>
+                                <div class="result-distance">Distance: ${item.distance.toFixed(4)}</div>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<div class="error">Error: ${result.error}</div>`;
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultsDiv.innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            }
+        });
+
+        setInterval(() => {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: ai-demo-build
+  labels:
+    app: ai-demo
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/tech-lab-demos
+      ref: main
+    contextDir: bonus-ai-app
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: ai-demo:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: github-webhook-secret # pragma: allowlist secret
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: ai-demo
+  labels:
+    app: ai-demo
+spec:
+  lookupPolicy:
+    local: false
